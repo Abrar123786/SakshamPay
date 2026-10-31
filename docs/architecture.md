@@ -65,3 +65,20 @@ Argon2id password hashing; JWT HS256, 30-minute access token kept in `sessionSto
   dependency rolls back on error and always closes. Missing configuration → 503
   `DATABASE_NOT_CONFIGURED`; connection failures and timeouts → 503 `DATABASE_UNAVAILABLE`.
 - **Services commit explicitly**; the session dependency never auto-commits.
+
+## P-4 implementation notes
+
+Full schema: [`database-schema.md`](database-schema.md).
+
+- Models in `app/models/` (one module per table, plus `enums.py` and `common.py`) on the
+  shared `Base` from `app/database/base.py`.
+- One risk assessment per transaction (unique `transaction_id`); assessments and audit logs
+  are append-only in the ORM.
+- `final_risk_score = round(0.6 × rule + 0.4 × ml)` is enforced by a CHECK constraint;
+  rules-only rows have `final_risk_score = rule_score`. `compute_final_risk_score()` is the
+  Python twin.
+- Rule weights total 105 (open decision); `rule_score` is stored capped at 0–100.
+- Beneficiary account references and UPI IDs are stored masked plus an HMAC fingerprint;
+  the fingerprint key setting arrives with the beneficiary service.
+- All foreign keys are `ON DELETE RESTRICT`; composite foreign keys enforce that payees,
+  transactions and assessments linked together belong to the same user.

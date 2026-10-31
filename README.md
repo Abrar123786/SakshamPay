@@ -45,7 +45,7 @@ sakshampay/
 │   ├── app/
 │   │   ├── core/           settings, logging, exceptions
 │   │   ├── database/       Database (engine, sessions, connectivity check), declarative base
-│   │   ├── models/         ORM models (later)
+│   │   ├── models/         six ORM models + enums (docs/database-schema.md)
 │   │   ├── schemas/        Pydantic schemas
 │   │   ├── repositories/   data access (later)
 │   │   ├── routes/         system router (/, /health, /health/ready) + /api/v1 router
@@ -187,7 +187,8 @@ value is left unset: `DEBUG=true`, `LOG_LEVEL=DEBUG`, `LOG_FORMAT=console`.
 # backend (from backend/, venv active)
 pytest
 
-# optional PostgreSQL integration test against a disposable database
+# optional PostgreSQL integration tests (database checks and every model constraint)
+# against a disposable database; tables are created in a temporary schema and dropped
 #   bash:       TEST_DATABASE_URL=postgresql://... pytest
 #   PowerShell: $env:TEST_DATABASE_URL="postgresql://..."; pytest
 
@@ -219,7 +220,7 @@ pins 3.13).
 
 ## Status
 
-P-3 (backend configuration and core infrastructure) complete. Authentication, database models, payments and
+P-4 (database design and SQLAlchemy models) complete. Schema: [`docs/database-schema.md`](docs/database-schema.md). Tables are created by migrations in P-5. Authentication, database models, payments and
 fraud detection are implemented in later stages.
 
 ## License
