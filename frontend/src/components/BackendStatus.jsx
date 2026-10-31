@@ -1,7 +1,7 @@
 import { CircleCheck, CircleX, LoaderCircle } from 'lucide-react'
 
 import { useBackendHealth } from '../hooks/useBackendHealth'
-import { env } from '../utils/env'
+import { HEALTH_URL } from '../services/systemService'
 
 /**
  * Setup-verification widget: shows whether the frontend can reach the API.
@@ -59,7 +59,7 @@ export default function BackendStatus() {
 
         <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs text-ink-subtle">
           <dt>Endpoint</dt>
-          <dd className="truncate font-mono">{env.apiBaseUrl}/health</dd>
+          <dd className="truncate font-mono">{HEALTH_URL}</dd>
         </dl>
       </div>
     </section>

@@ -33,8 +33,13 @@ function readApiBaseUrl() {
   return raw.replace(/\/+$/, '')
 }
 
+const apiBaseUrl = readApiBaseUrl()
+
 export const env = Object.freeze({
-  apiBaseUrl: readApiBaseUrl(),
+  // Versioned business API, e.g. http://localhost:8000/api/v1
+  apiBaseUrl,
+  // Server origin for unversioned system endpoints (/health), e.g. http://localhost:8000
+  apiOrigin: new URL(apiBaseUrl).origin,
   mode: import.meta.env.MODE,
   isProduction: import.meta.env.PROD,
 })

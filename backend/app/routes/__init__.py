@@ -1,15 +1,22 @@
-"""HTTP routers. One module per API group; routers validate input, call one service
-method and shape the response. No business logic lives here.
+"""HTTP routing.
 
-``api_router`` is mounted at ``settings.API_V1_PREFIX`` (``/api/v1``). Later prompts
-add the auth, users, beneficiaries, transactions, risk, dashboard and alerts routers.
+Two routers, mounted by ``app.main.create_app``:
+
+* ``system.router``: unversioned operational endpoints (``/``, ``/health``,
+  ``/health/ready``). Mounted at the root.
+* ``api_router``: every versioned business endpoint, mounted once at
+  ``settings.API_V1_PREFIX`` (``/api/v1``). Feature routers are added here as
+  they are built (P-4 onwards: auth, users, beneficiaries, transactions, risk,
+  dashboard, alerts) and so inherit the prefix automatically. It has no routes yet.
+
+Routers validate input, call one service method and shape the response;
+business logic never lives here.
 """
 
 from fastapi import APIRouter
 
-from app.routes import health
+from app.routes import system
 
 api_router = APIRouter()
-api_router.include_router(health.router)
 
-__all__ = ["api_router", "health"]
+__all__ = ["api_router", "system"]

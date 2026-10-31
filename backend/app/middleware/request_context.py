@@ -4,8 +4,11 @@ For every HTTP request it:
   * accepts a well-formed incoming ``X-Request-ID`` or generates one,
   * exposes it to logs (context variable) and returns it as a response header,
   * adds baseline security headers to every response,
-  * writes one structured access-log line with status and duration,
-  * converts unexpected exceptions into the standard JSON 500 response.
+  * rejects requests whose declared body exceeds ``max_body_bytes`` (413),
+  * writes one structured access-log line with status and duration
+    (no query strings, headers or bodies, which may carry personal data),
+  * converts unexpected exceptions into the standard JSON 500 response and logs
+    them with a full traceback.
 
 It is registered *inside* CORSMiddleware, so even error responses carry CORS
 headers and the browser can read them.
@@ -16,9 +19,10 @@ import re
 import time
 import uuid
 
+from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app.core.exceptions import internal_error_response
+from app.core.exceptions import error_body, internal_error_response
 from app.core.logging import request_id_var
 
 logger = logging.getLogger("sakshampay.access")
@@ -35,15 +39,17 @@ SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
 
 
 class RequestContextMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, max_body_bytes: int = 1_048_576) -> None:
         self.app = app
+        self.max_body_bytes = max_body_bytes
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
-        incoming = dict(scope.get("headers") or []).get(b"x-request-id", b"").decode("latin-1")
+        headers = dict(scope.get("headers") or [])
+        incoming = headers.get(b"x-request-id", b"").decode("latin-1")
         request_id = incoming if _VALID_REQUEST_ID.match(incoming) else uuid.uuid4().hex
         token = request_id_var.set(request_id)
 
@@ -64,15 +70,23 @@ class RequestContextMiddleware:
             await send(message)
 
         try:
+            rejection = self._check_body_size(headers.get(b"content-length"))
+            if rejection is not None:
+                await rejection(scope, receive, send_with_headers)
+                return
             await self.app(scope, receive, send_with_headers)
         except Exception:
-            error_logger.exception("Unhandled exception", extra={"path": scope.get("path")})
+            error_logger.exception(
+                "Unhandled exception", extra={"method": scope.get("method"), "path": scope.get("path")}
+            )
             if response_started:
                 raise
             await internal_error_response()(scope, receive, send_with_headers)
         finally:
             duration_ms = round((time.perf_counter() - started) * 1000, 1)
-            logger.info(
+            level = logging.ERROR if status_code >= 500 else logging.WARNING if status_code >= 400 else logging.INFO
+            logger.log(
+                level,
                 "request",
                 extra={
                     "method": scope.get("method"),
@@ -82,3 +96,20 @@ class RequestContextMiddleware:
                 },
             )
             request_id_var.reset(token)
+
+    def _check_body_size(self, content_length: bytes | None) -> JSONResponse | None:
+        """Reject oversized bodies before they are read. Bodies sent without a
+        Content-Length (chunked) are not covered; FastAPI's schemas still bound
+        what is accepted."""
+        if content_length is None:
+            return None
+        try:
+            declared = int(content_length)
+        except ValueError:
+            return JSONResponse(status_code=400, content=error_body("BAD_REQUEST", "Invalid Content-Length header."))
+        if declared > self.max_body_bytes:
+            return JSONResponse(
+                status_code=413,
+                content=error_body("PAYLOAD_TOO_LARGE", f"Request body exceeds {self.max_body_bytes} bytes."),
+            )
+        return None

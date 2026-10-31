@@ -14,6 +14,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import request_id_var
@@ -27,6 +29,8 @@ _HTTP_CODE_NAMES = {
     404: "NOT_FOUND",
     405: "METHOD_NOT_ALLOWED",
     409: "CONFLICT",
+    413: "PAYLOAD_TOO_LARGE",
+    415: "UNSUPPORTED_MEDIA_TYPE",
     422: "VALIDATION_ERROR",
     429: "TOO_MANY_REQUESTS",
     503: "SERVICE_UNAVAILABLE",
@@ -65,6 +69,16 @@ class ServiceUnavailableError(AppError):
     message = "A required service is temporarily unavailable. Please try again."
 
 
+class DatabaseNotConfiguredError(ServiceUnavailableError):
+    code = "DATABASE_NOT_CONFIGURED"
+    message = "The database is not configured for this environment."
+
+
+class DatabaseUnavailableError(ServiceUnavailableError):
+    code = "DATABASE_UNAVAILABLE"
+    message = "The database is temporarily unavailable. Please try again shortly."
+
+
 def error_body(code: str, message: str, **extra) -> dict:
     body = {"code": code, "message": message, "request_id": request_id_var.get()}
     body.update(extra)
@@ -100,6 +114,21 @@ async def _validation_error_handler(_: Request, exc: RequestValidationError) -> 
     )
 
 
+async def _database_unavailable_handler(_: Request, exc: Exception) -> JSONResponse:
+    """Connection refused, server gone, statement timeout or pool exhausted.
+
+    Logged with the exception class and traceback for debugging; the client gets a
+    generic 503. (psycopg messages can include host and user names, never passwords.)
+    """
+    logger.error(
+        "Database unavailable",
+        extra={"exception_type": type(exc).__name__},
+        exc_info=exc,
+    )
+    error = DatabaseUnavailableError()
+    return JSONResponse(status_code=error.status_code, content=error_body(error.code, error.message))
+
+
 def internal_error_response() -> JSONResponse:
     """Response for unexpected exceptions; produced by RequestContextMiddleware so that
     it still passes through CORS (Starlette's default 500 handler sits outside CORS)."""
@@ -113,3 +142,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppError, _app_error_handler)
     app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
     app.add_exception_handler(RequestValidationError, _validation_error_handler)
+    for db_error in (OperationalError, InterfaceError, PoolTimeoutError):
+        app.add_exception_handler(db_error, _database_unavailable_handler)

@@ -49,3 +49,19 @@ Argon2id password hashing; JWT HS256, 30-minute access token kept in `sessionSto
 | `app/api/` | `app/routes/` |
 | `app/db/` | `app/database/` (engine, session, base) + `app/models/` + `app/repositories/` |
 | `app/fraud/` | `app/fraud_detection/` |
+
+## P-3 implementation notes
+
+- **System vs versioned routes.** `/`, `/health` (liveness) and `/health/ready` (readiness)
+  are unversioned and live in `app/routes/system.py`. Every business router is added to
+  `api_router` in `app/routes/__init__.py`, which is mounted once at `API_V1_PREFIX`.
+  P-2 mounted the same health router at both `/health` and `/api/v1/health`; the duplicate
+  was removed and the frontend now calls `/health` at the API origin.
+- **Settings** (`app/core/config.py`): one class, profile chosen by `APP_ENV`; development
+  defaults apply only to unset values; production rejects unsafe values at startup.
+  `DATABASE_URL` and `JWT_SECRET_KEY` are `SecretStr`; logs use `database_url_masked`.
+- **Database** (`app/database/session.py`): a `Database` object per app on
+  `app.state.database`; lazy engine; `check_connection()` never raises; `DbSession`
+  dependency rolls back on error and always closes. Missing configuration → 503
+  `DATABASE_NOT_CONFIGURED`; connection failures and timeouts → 503 `DATABASE_UNAVAILABLE`.
+- **Services commit explicitly**; the session dependency never auto-commits.

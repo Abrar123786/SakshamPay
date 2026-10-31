@@ -23,11 +23,11 @@ target_metadata = Base.metadata
 
 def _database_url() -> str:
     url = get_settings().DATABASE_URL
-    if not url:
+    if url is None:
         raise RuntimeError(
             "DATABASE_URL is not set. Add it to backend/.env (see .env.example) before running Alembic."
         )
-    return url
+    return url.get_secret_value()
 
 
 def run_migrations_offline() -> None:

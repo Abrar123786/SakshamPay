@@ -67,8 +67,12 @@ def configure_logging(settings: Settings) -> None:
     else:
         handler.setFormatter(ConsoleFormatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s"))
 
+    # Replace only the handler this function installed before (create_app may run more
+    # than once, e.g. in tests); handlers added by other tools are left in place.
+    handler._sakshampay = True  # type: ignore[attr-defined]
     root = logging.getLogger()
-    root.handlers = [handler]
+    root.handlers = [h for h in root.handlers if not getattr(h, "_sakshampay", False)]
+    root.addHandler(handler)
     root.setLevel(settings.LOG_LEVEL)
 
     # Route uvicorn's own loggers through the same handler. The access logger is
@@ -81,3 +85,8 @@ def configure_logging(settings: Settings) -> None:
     access.handlers = []
     access.propagate = False
     access.disabled = True
+
+    # SQLAlchemy logs every statement whenever its logger is enabled for INFO, so
+    # with LOG_LEVEL=DEBUG it would dump SQL and parameters. Only DB_ECHO turns that on.
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO if settings.DB_ECHO else logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)

@@ -1,62 +1,87 @@
-"""SakshamPay API entry point.
+"""SakshamPay API entry point and application factory.
 
-Run locally:  uvicorn app.main:app --reload --port 8000   (from the backend/ directory)
+Run locally (from backend/):  uvicorn app.main:app --reload --port 8000
 """
 
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
+from app.database.session import Database
 from app.middleware.request_context import RequestContextMiddleware
-from app.routes import api_router, health
+from app.routes import api_router, system
 
 logger = logging.getLogger("sakshampay")
 
+CORS_ALLOWED_METHODS = ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]
 CORS_ALLOWED_HEADERS = ["Authorization", "Content-Type", "Idempotency-Key", "X-Device-Id", "X-Request-ID"]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings: Settings = app.state.settings
+    database: Database = app.state.database
+
+    logger.info("Starting application", extra=settings.safe_summary())
+
+    # Connectivity is checked only when a database is configured, and a failure is
+    # logged rather than fatal: /health keeps answering and /health/ready reports 503
+    # until the database becomes reachable.
+    if database.is_configured:
+        status = await run_in_threadpool(database.check_connection)
+        if status.state == "ok":
+            logger.info("Database reachable", extra={"latency_ms": status.latency_ms})
+        else:
+            logger.error(
+                "Database configured but unreachable; continuing without it",
+                extra={"error_type": status.error_type},
+            )
+    else:
+        logger.warning("DATABASE_URL is not set; running without a database (development only)")
+
+    yield
+
+    logger.info("Shutting down application")
+    database.dispose()
+    logger.info("Application stopped")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings)
 
-    @asynccontextmanager
-    async def lifespan(_: FastAPI):
-        logger.info(
-            "Starting application",
-            extra={
-                "app_env": settings.APP_ENV,
-                "version": settings.APP_VERSION,
-                "cors_origins": settings.cors_origins,
-                "database_configured": settings.DATABASE_URL is not None,
-            },
-        )
-        yield
-        logger.info("Application stopped")
-
     app = FastAPI(
         title=f"{settings.APP_NAME} API",
         version=settings.APP_VERSION,
-        description="Pre-transaction risk assessment for simulated digital payments. Prototype only.",
+        description=(
+            "Pre-transaction risk assessment for simulated digital payments. Prototype only: "
+            "not connected to UPI, NPCI or any bank.\n\n"
+            f"Versioned business endpoints live under `{settings.API_V1_PREFIX}`. "
+            "System endpoints (`/`, `/health`, `/health/ready`) are unversioned."
+        ),
         debug=settings.DEBUG,
         lifespan=lifespan,
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
     )
+    app.state.settings = settings
+    app.state.database = Database(settings)
 
-    # Middleware order: the last one added is the outermost. CORS must wrap
-    # RequestContextMiddleware so that error responses also get CORS headers.
-    app.add_middleware(RequestContextMiddleware)
+    # Middleware order: the last one added is the outermost. CORS wraps
+    # RequestContextMiddleware so that error responses also carry CORS headers.
+    app.add_middleware(RequestContextMiddleware, max_body_bytes=settings.MAX_REQUEST_BODY_BYTES)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=False,  # bearer tokens, not cookies (P-1 decision D12)
-        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=CORS_ALLOWED_METHODS,
         allow_headers=CORS_ALLOWED_HEADERS,
         expose_headers=["X-Request-ID"],
         max_age=600,
@@ -64,8 +89,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(app)
 
-    app.include_router(health.router)  # GET /health (platform health checks)
-    app.include_router(api_router, prefix=settings.API_V1_PREFIX)  # GET /api/v1/health, ...
+    app.include_router(system.router)
+    app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
     return app
 

@@ -1,24 +1,26 @@
-from app.core.config import Settings
-from app.main import create_app
+"""Interactive API documentation."""
+
 from fastapi.testclient import TestClient
 
+from app.main import create_app
+from tests.conftest import make_production_settings
 
-def test_openapi_and_swagger_ui_load(client):
-    spec = client.get("/openapi.json")
-    assert spec.status_code == 200
-    paths = spec.json()["paths"]
-    assert "/health" in paths and "/api/v1/health" in paths
 
+def test_swagger_redoc_and_openapi_load(client):
+    assert client.get("/openapi.json").status_code == 200
     docs = client.get("/docs")
-    assert docs.status_code == 200
-    assert "swagger" in docs.text.lower()
-
+    assert docs.status_code == 200 and "swagger" in docs.text.lower()
     assert client.get("/redoc").status_code == 200
 
 
+def test_openapi_documents_readiness_503(client):
+    responses = client.get("/openapi.json").json()["paths"]["/health/ready"]["get"]["responses"]
+    assert {"200", "503"} <= set(responses)
+
+
 def test_docs_are_hidden_in_production():
-    settings = Settings(_env_file=None, APP_ENV="production", JWT_SECRET_KEY="x" * 40)
-    with TestClient(create_app(settings)) as prod_client:
-        assert prod_client.get("/docs").status_code == 404
-        assert prod_client.get("/openapi.json").status_code == 404
-        assert prod_client.get("/health").status_code == 200
+    with TestClient(create_app(make_production_settings(DB_CONNECT_TIMEOUT_SECONDS=1))) as client:
+        assert client.get("/docs").status_code == 404
+        assert client.get("/redoc").status_code == 404
+        assert client.get("/openapi.json").status_code == 404
+        assert client.get("/health").status_code == 200
