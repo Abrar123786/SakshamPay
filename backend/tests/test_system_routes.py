@@ -32,6 +32,15 @@ def test_health_returns_expected_body(client):
     assert response.json() == HEALTH_BODY
 
 
+def test_responses_carry_security_headers(client):
+    # Carried over from the P-2 test_health.py, which was the only place these were asserted
+    for path in ("/", "/health", "/does-not-exist"):
+        headers = client.get(path).headers
+        assert headers["x-content-type-options"] == "nosniff"
+        assert headers["x-frame-options"] == "DENY"
+        assert headers["referrer-policy"] == "no-referrer"
+
+
 def test_health_is_not_duplicated_under_api_prefix(client):
     assert client.get("/api/v1/health").status_code == 404
 
