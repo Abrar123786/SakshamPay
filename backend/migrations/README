@@ -1,0 +1,9 @@
+Alembic migrations for SakshamPay (run from the backend/ directory).
+
+  alembic revision --autogenerate -m "describe change"   # after changing models
+  alembic upgrade head                                   # apply
+  alembic downgrade -1                                   # roll back one step
+  alembic current                                        # show applied revision
+
+DATABASE_URL is read from the environment or backend/.env. No migrations exist
+yet: the six core tables are added together with the models in a later prompt.

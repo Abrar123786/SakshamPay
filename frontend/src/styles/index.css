@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/*
+ * SakshamPay design tokens (Tailwind v4 CSS-first configuration).
+ *
+ * Palette rules from P-1:
+ *   - one neutral ink + warm off-white surface
+ *   - one brand accent, used for primary actions and links only
+ *   - three risk colours, used ONLY to communicate risk category
+ * No gradients, glows or decorative colour.
+ */
+@theme {
+  --font-sans: "Inter", "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Neutrals */
+  --color-ink: #14181f;
+  --color-ink-muted: #4b5361;
+  --color-ink-subtle: #6b7380;
+  --color-surface: #f7f6f3;
+  --color-surface-raised: #ffffff;
+  --color-line: #e2e0da;
+  --color-line-strong: #c9c6be;
+
+  /* Brand accent (deep teal) */
+  --color-brand: #0f5c63;
+  --color-brand-hover: #0b4a50;
+  --color-brand-soft: #e3eff0;
+
+  /* Risk categories: never used for decoration */
+  --color-risk-low: #1d6b3a;
+  --color-risk-low-soft: #e6f2ea;
+  --color-risk-medium: #8a5a00;
+  --color-risk-medium-soft: #faf0dc;
+  --color-risk-high: #a3271f;
+  --color-risk-high-soft: #fbe9e7;
+}
+
+@layer base {
+  html {
+    color: var(--color-ink);
+    background-color: var(--color-surface);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: var(--font-sans);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

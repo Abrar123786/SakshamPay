@@ -1,0 +1,91 @@
+# ---------------------------------------------------------------
+# SakshamPay .gitignore
+# ---------------------------------------------------------------
+
+# --- Environment files (secrets) -------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Node / frontend --------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.local
+
+# --- Python / backend -------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.python-version.local
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# --- Build output -------------------------------------------------
+dist/
+dist-ssr/
+build/
+out/
+.vercel/
+
+# --- Logs ---------------------------------------------------------
+logs/
+*.log
+
+# --- Generated ML artifacts --------------------------------------
+# Trained models, calibration files and generated datasets are produced
+# by the offline pipeline and published deliberately, not committed by accident.
+*.joblib
+*.pkl
+*.pickle
+*.onnx
+ml/artifacts/
+ml/data/generated/
+backend/app/fraud_detection/artifacts/
+
+# --- Local databases ---------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+pgdata/
+
+# --- IDE / editor -------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# --- OS / temporary files ----------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.temp
+*.bak
+tmp/
+temp/

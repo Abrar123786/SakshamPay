@@ -1,0 +1,26 @@
+# SakshamPay backend runtime dependencies (pinned; tested on Python 3.13).
+# Install: pip install -r requirements.txt
+
+# Web framework and server
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+
+# Validation and configuration
+pydantic==2.14.2
+pydantic-settings==2.16.2
+python-dotenv==1.2.4
+
+# Database
+SQLAlchemy==2.1.6
+psycopg[binary]==3.3.6
+alembic==1.20.1
+
+# Security (used from P-3 onwards)
+argon2-cffi==25.1.0
+PyJWT==2.15.1
+
+# Machine learning (used in the fraud-detection stages)
+pandas==3.1.0
+numpy==2.5.4
+scikit-learn==1.9.1
+joblib==1.6.0
