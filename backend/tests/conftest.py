@@ -24,6 +24,7 @@ def make_production_settings(**overrides) -> Settings:
     values = {
         "APP_ENV": "production",
         "JWT_SECRET_KEY": PRODUCTION_SECRET,
+        "IDENTIFIER_HASH_KEY": "i" * 48,
         "DATABASE_URL": UNREACHABLE_DATABASE_URL,
         "FRONTEND_ORIGIN": "https://sakshampay.example",
     }

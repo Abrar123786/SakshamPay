@@ -1,24 +1,36 @@
 """Alembic environment.
 
-The database URL comes from DATABASE_URL (environment or backend/.env) via the
-application's Settings, so credentials are never written into alembic.ini.
+Target metadata is the shared ``Base.metadata``; importing ``app.models`` registers
+all six P-4 tables on it.
+
+Database URL, in order of precedence:
+  1. a connection passed programmatically in ``config.attributes["connection"]``
+     (used by the test suite to migrate a throwaway schema);
+  2. ``DATABASE_URL`` from the environment or ``backend/.env`` (via Settings).
+Credentials are never written to ``alembic.ini`` and never printed.
 """
 
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import create_engine, pool
+from sqlalchemy import Connection, create_engine, pool
 
-import app.models  # noqa: F401  (imports every model so autogenerate can see them)
+import app.models  # noqa: F401  (registers every model on Base.metadata)
 from app.core.config import get_settings
 from app.database.base import Base
 
 config = context.config
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
+
+CONFIGURE_OPTIONS = {
+    "target_metadata": target_metadata,
+    "compare_type": True,
+    "compare_server_default": True,
+}
 
 
 def _database_url() -> str:
@@ -31,24 +43,34 @@ def _database_url() -> str:
 
 
 def run_migrations_offline() -> None:
-    """Emit SQL to stdout without connecting (alembic upgrade head --sql)."""
+    """Emit SQL to stdout without connecting (``alembic upgrade head --sql``)."""
     context.configure(
         url=_database_url(),
-        target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        compare_type=True,
+        **CONFIGURE_OPTIONS,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
+def _run_with_connection(connection: Connection) -> None:
+    context.configure(connection=connection, **CONFIGURE_OPTIONS)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
-    connectable = create_engine(_database_url(), poolclass=pool.NullPool)
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
-        with context.begin_transaction():
-            context.run_migrations()
+    provided: Connection | None = config.attributes.get("connection")
+    if provided is not None:
+        _run_with_connection(provided)
+        return
+    engine = create_engine(_database_url(), poolclass=pool.NullPool)
+    try:
+        with engine.connect() as connection:
+            _run_with_connection(connection)
+    finally:
+        engine.dispose()
 
 
 if context.is_offline_mode():

@@ -15,7 +15,7 @@ One ``Settings`` class serves every environment; ``APP_ENV`` selects the profile
   mode, a missing or short JWT secret, a missing database URL, non-HTTPS or
   wildcard CORS origins, and SQL echo logging.
 
-Secrets (``DATABASE_URL``, ``JWT_SECRET_KEY``) are ``SecretStr``: they never
+Secrets (``DATABASE_URL``, ``JWT_SECRET_KEY``, ``IDENTIFIER_HASH_KEY``) are ``SecretStr``: they never
 appear in ``repr()``, logs or tracebacks. Use ``database_url_masked`` to log
 where the database is.
 """
@@ -34,6 +34,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 APP_VERSION = "1.0.0"
 MIN_JWT_SECRET_LENGTH = 32
+MIN_IDENTIFIER_HASH_KEY_LENGTH = 32
 
 Environment = Literal["development", "test", "production"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
@@ -63,7 +64,14 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT_SECONDS: int = Field(default=10, ge=1, le=120)
     DB_CONNECT_TIMEOUT_SECONDS: int = Field(default=5, ge=1, le=60)
     DB_STATEMENT_TIMEOUT_MS: int = Field(default=3000, ge=100, le=60_000)
+    # Replace pooled connections older than this; managed hosts close long-idle connections.
+    DB_POOL_RECYCLE_SECONDS: int = Field(default=1800, ge=60, le=86_400)
     DB_ECHO: bool = False  # logs every SQL statement; never in production
+
+    # --- Data protection ---------------------------------------------------------
+    # HMAC key for fingerprints of beneficiary account references, UPI IDs and device IDs
+    # (P-4 design). Changing it makes existing fingerprints unmatchable, so set it once.
+    IDENTIFIER_HASH_KEY: SecretStr | None = None
 
     # --- Authentication (consumed from P-6) -------------------------------------
     JWT_SECRET_KEY: SecretStr | None = None
@@ -79,7 +87,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: LogFormat = "json"
 
     # --- Field validation ----------------------------------------------------------
-    @field_validator("DATABASE_URL", "JWT_SECRET_KEY", mode="before")
+    @field_validator("DATABASE_URL", "JWT_SECRET_KEY", "IDENTIFIER_HASH_KEY", mode="before")
     @classmethod
     def _empty_string_is_unset(cls, value):
         """``.env.example`` ships with ``DATABASE_URL=``; treat blank as not configured."""
@@ -165,6 +173,11 @@ class Settings(BaseSettings):
                 problems.append(f"JWT_SECRET_KEY must be set and at least {MIN_JWT_SECRET_LENGTH} characters")
             if self.DATABASE_URL is None:
                 problems.append("DATABASE_URL must be set")
+            hash_key = self.IDENTIFIER_HASH_KEY.get_secret_value() if self.IDENTIFIER_HASH_KEY else ""
+            if len(hash_key) < MIN_IDENTIFIER_HASH_KEY_LENGTH:
+                problems.append(
+                    f"IDENTIFIER_HASH_KEY must be set and at least {MIN_IDENTIFIER_HASH_KEY_LENGTH} characters"
+                )
             if self.DB_ECHO:
                 problems.append("DB_ECHO must be false (it would log query parameters)")
             for origin in self.cors_origins:
@@ -209,6 +222,7 @@ class Settings(BaseSettings):
             "cors_origins": self.cors_origins,
             "database": self.database_url_masked or "not configured",
             "jwt_secret_configured": self.JWT_SECRET_KEY is not None,
+            "identifier_hash_key_configured": self.IDENTIFIER_HASH_KEY is not None,
             "docs_enabled": self.docs_enabled,
             "log_level": self.LOG_LEVEL,
         }
