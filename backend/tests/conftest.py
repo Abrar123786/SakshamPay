@@ -64,3 +64,19 @@ def real_database_url() -> str:
     if not url:
         pytest.skip("TEST_DATABASE_URL not set; skipping PostgreSQL integration test")
     return url
+
+
+# ---- authentication (P-6) -----------------------------------------------------------------
+
+TEST_JWT_SECRET = "test-jwt-secret-" + "s" * 40
+
+
+@pytest.fixture
+def fast_password_hashing(monkeypatch):
+    """Argon2id with test-sized cost (the default costs 64 MiB per hash). Still Argon2id,
+    so stored hashes pass the database's '$argon2id$' check."""
+    from argon2 import PasswordHasher
+
+    from app.core import security
+
+    monkeypatch.setattr(security, "password_hasher", PasswordHasher(time_cost=1, memory_cost=8192, parallelism=1))

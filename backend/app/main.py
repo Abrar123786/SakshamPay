@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import Settings, get_settings
+from app.core.config import MIN_JWT_SECRET_LENGTH, Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.database.session import Database
@@ -44,6 +44,9 @@ async def lifespan(app: FastAPI):
             )
     else:
         logger.warning("DATABASE_URL is not set; running without a database (development only)")
+
+    if settings.JWT_SECRET_KEY is None or len(settings.JWT_SECRET_KEY.get_secret_value()) < MIN_JWT_SECRET_LENGTH:
+        logger.warning("JWT_SECRET_KEY is missing or too short; login and protected endpoints will return 503")
 
     yield
 

@@ -73,10 +73,13 @@ class Settings(BaseSettings):
     # (P-4 design). Changing it makes existing fingerprints unmatchable, so set it once.
     IDENTIFIER_HASH_KEY: SecretStr | None = None
 
-    # --- Authentication (consumed from P-6) -------------------------------------
+    # --- Authentication (P-6) ---------------------------------------------------
     JWT_SECRET_KEY: SecretStr | None = None
     JWT_ALGORITHM: Literal["HS256"] = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, ge=1, le=1440)
+    # P-1 lockout rule: this many consecutive failed logins lock the account for LOGIN_LOCKOUT_MINUTES.
+    LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5, ge=1, le=20)
+    LOGIN_LOCKOUT_MINUTES: int = Field(default=15, ge=1, le=1440)
 
     # --- HTTP --------------------------------------------------------------------
     FRONTEND_ORIGIN: str = "http://localhost:5173"  # comma-separated CORS allowlist
