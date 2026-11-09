@@ -1,7 +1,7 @@
 # SakshamPay database schema (P-4)
 
-Six PostgreSQL tables, defined as SQLAlchemy 2.x models in `backend/app/models/`.
-Tables are created by Alembic migrations in P-5; P-4 defines the models only.
+Six PostgreSQL tables, defined as SQLAlchemy 2.x models in `backend/app/models/` and
+created by the Alembic migrations in `backend/migrations/versions/` (P-5).
 
 ## Conventions
 
@@ -302,8 +302,9 @@ Indexes: `ix_audit_logs_user_id_created_at`, `ix_audit_logs_transaction_id_creat
 
 Append-only: the ORM refuses to UPDATE or DELETE an `AuditLog` (and a `RiskAssessment`).
 JSON fields reject keys such as `password`, `password_hash`, `token`, `jwt`, `secret`
-and `authorization` at any depth. Database-level enforcement (revoking UPDATE/DELETE from
-the application role) is set up with the migrations in P-5.
+and `authorization` at any depth. Since P-5, PostgreSQL triggers also refuse UPDATE, DELETE and
+TRUNCATE on `audit_logs` and `risk_assessments`, and the least-privilege application role
+has no UPDATE/DELETE on them (see `docs/database-operations.md`).
 
 ## Cross-row integrity
 

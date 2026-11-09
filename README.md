@@ -47,14 +47,16 @@ sakshampay/
 │   │   ├── database/       Database (engine, sessions, connectivity check), declarative base
 │   │   ├── models/         six ORM models + enums (docs/database-schema.md)
 │   │   ├── schemas/        Pydantic schemas
-│   │   ├── repositories/   data access (later)
+│   │   ├── repositories/   data access: one repository per table (P-5)
 │   │   ├── routes/         system router (/, /health, /health/ready) + /api/v1 router
 │   │   ├── services/       business logic (later)
 │   │   ├── fraud_detection/ risk engine (later)
 │   │   ├── middleware/     request ID, access log, security headers
 │   │   ├── utils/
 │   │   └── main.py         application factory
-│   ├── migrations/         Alembic
+│   ├── migrations/         Alembic: core tables + append-only triggers
+│   ├── seeds/              development seed data (never used in production)
+│   ├── scripts/            grant_app_privileges.sql (least-privilege app role)
 │   ├── tests/
 │   ├── .env.example
 │   ├── alembic.ini
@@ -76,8 +78,8 @@ sakshampay/
 | Git | any recent | `git --version` |
 | PostgreSQL | 16 recommended | `psql --version` |
 
-PostgreSQL is not needed to run the app yet (`/health` does not use it), but it is needed
-from the next stage. To install it:
+PostgreSQL is optional for starting the app (`/health` never uses it) but required for
+every database feature; see `docs/database-operations.md` for the Windows setup. To install it:
 
 - **Windows:** install from the EnterpriseDB installer at postgresql.org/download/windows and
   add its `bin` folder to PATH.
@@ -197,13 +199,16 @@ npm run lint
 npm run build
 ```
 
-## Database migrations
+## Database
 
-```bash
-cd backend
-alembic current                               # verifies the DATABASE_URL connection
-alembic revision --autogenerate -m "message"  # after model changes (later stages)
-alembic upgrade head
+Full Windows walkthrough (PostgreSQL install, roles, migrations, seed data, tests):
+[`docs/database-operations.md`](docs/database-operations.md). Schema reference:
+[`docs/database-schema.md`](docs/database-schema.md).
+
+```powershell
+alembic upgrade head          # create/upgrade the schema
+alembic current               # show the applied revision
+python -m seeds.dev_seed      # load fictional development data (refused in production)
 ```
 
 ## Deployment notes
@@ -220,7 +225,8 @@ pins 3.13).
 
 ## Status
 
-P-4 (database design and SQLAlchemy models) complete. Schema: [`docs/database-schema.md`](docs/database-schema.md). Tables are created by migrations in P-5. Authentication, database models, payments and
+P-5 (database operations and PostgreSQL integration) complete: migrations, repositories,
+database-level audit protection and development seed data. Authentication, database models, payments and
 fraud detection are implemented in later stages.
 
 ## License

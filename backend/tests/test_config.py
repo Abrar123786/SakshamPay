@@ -53,6 +53,8 @@ def test_valid_production_configuration():
         ({"JWT_SECRET_KEY": ""}, "JWT_SECRET_KEY"),
         ({"DATABASE_URL": ""}, "DATABASE_URL must be set"),
         ({"DB_ECHO": True}, "DB_ECHO"),
+        ({"IDENTIFIER_HASH_KEY": ""}, "IDENTIFIER_HASH_KEY"),
+        ({"IDENTIFIER_HASH_KEY": "short"}, "IDENTIFIER_HASH_KEY"),
         ({"FRONTEND_ORIGIN": "http://sakshampay.example"}, "https://"),
         ({"FRONTEND_ORIGIN": "*"}, "https://"),
     ],

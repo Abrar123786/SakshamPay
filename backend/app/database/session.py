@@ -58,6 +58,7 @@ class Database:
                 pool_size=s.DB_POOL_SIZE,
                 max_overflow=s.DB_MAX_OVERFLOW,
                 pool_timeout=s.DB_POOL_TIMEOUT_SECONDS,
+                pool_recycle=s.DB_POOL_RECYCLE_SECONDS,
                 # SQL logging is controlled by DB_ECHO through the "sqlalchemy.engine"
                 # logger (see core/logging.py); echo=True would add a second handler.
                 echo=False,
