@@ -14,10 +14,12 @@ const FRAME = cx(
  * - outline colour line-input (3.63:1), danger when `invalid`
  * - `prefix` / `suffix`: short adornments such as "₹" or a unit; decorative
  *   (the label must still describe the field)
+ * - `endAction`: an interactive control inside the frame, such as a show/hide
+ *   password button. Unlike `suffix` it is not hidden from assistive technology.
  *
  * Prefer using it through Field, which wires up label, hint and error.
  */
-export default function Input({ invalid = false, size = 'md', prefix, suffix, disabled, className, ...rest }) {
+export default function Input({ invalid = false, size = 'md', prefix, suffix, endAction, disabled, className, ...rest }) {
   const borderColour = invalid ? 'border-danger' : 'border-line-input hover:border-ink-subtle'
   return (
     <div
@@ -35,7 +37,7 @@ export default function Input({ invalid = false, size = 'md', prefix, suffix, di
           'h-full w-full min-w-0 rounded-md bg-transparent px-3 text-base text-ink',
           'placeholder:text-ink-subtle focus:outline-none disabled:cursor-not-allowed disabled:text-ink-disabled',
           prefix && 'pl-2',
-          suffix && 'pr-2',
+          (suffix || endAction) && 'pr-2',
         )}
         {...rest}
       />
@@ -44,6 +46,7 @@ export default function Input({ invalid = false, size = 'md', prefix, suffix, di
           {suffix}
         </span>
       )}
+      {endAction && <span className="flex shrink-0 items-center pr-1">{endAction}</span>}
     </div>
   )
 }

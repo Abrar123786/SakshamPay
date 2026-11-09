@@ -1,11 +1,12 @@
 import { Link, Outlet } from 'react-router'
 
+import AuthNav from '../components/auth/AuthNav'
 import Logo from '../components/Logo'
 import PageContainer from './PageContainer'
 
 /**
- * Base public layout: header, page content, footer.
- * Authenticated pages will get their own layout in a later prompt.
+ * Base layout: header (with sign-in or account actions), page content, footer.
+ * Used by public, signed-out and signed-in pages alike.
  */
 export default function AppLayout() {
   return (
@@ -18,11 +19,14 @@ export default function AppLayout() {
       </a>
 
       <header className="border-b border-line bg-surface-raised">
-        <PageContainer className="flex h-16 items-center justify-between">
+        <PageContainer className="flex h-16 items-center justify-between gap-4">
           <Link to="/" className="rounded-sm" aria-label="SakshamPay home">
             <Logo />
           </Link>
-          <p className="hidden text-sm text-ink-subtle sm:block">Prototype environment</p>
+          <div className="flex items-center gap-4">
+            <p className="hidden text-sm text-ink-subtle lg:block">Prototype environment</p>
+            <AuthNav />
+          </div>
         </PageContainer>
       </header>
 

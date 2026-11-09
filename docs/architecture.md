@@ -132,3 +132,23 @@ Guide: [`design-system.md`](design-system.md). Frontend only; no backend changes
 - Route table moved to `frontend/src/routes.jsx`. The `/__ui` gallery is registered only
   in development (`import.meta.env.DEV`) and is absent from production builds.
 - Frontend tests: Vitest + React Testing Library (`npm test`).
+
+## P-8 implementation notes
+
+Guide: [`frontend-authentication.md`](frontend-authentication.md). Frontend only; the P-6
+API contract is unchanged.
+
+- Token in `sessionStorage` (D12) via `src/services/tokenStore.js`, as `{ accessToken, expiresAt }`.
+  Expiry is computed from `expires_in`. Passwords and the profile are never stored, and the
+  JWT is never decoded in the browser.
+- `apiClient` attaches the bearer token only to requests under `VITE_API_BASE_URL`. A 401
+  on an authenticated request clears the session; network errors and 5xx keep it.
+  `ApiError.cause` is sanitised (no request body or headers).
+- `AuthProvider` is the single owner of auth state (`restoring`, `authenticated`,
+  `unauthenticated`, `error`). The `RequireAuth` and `GuestOnly` guards protect routes.
+  Routes: `/login`, `/register`, `/account`.
+- Registration does not sign in: it redirects to `/login` with the email prefilled.
+  10-digit Indian mobile numbers are sent as `+91…`.
+- Gaps kept as decisions for later phases: there is no server-side logout or revocation
+  (the backend has no logout endpoint) and no refresh tokens. The production CSP is a
+  deployment requirement once the Render and Vercel domains are known.

@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
+import AuthProvider from '../context/AuthProvider'
+
 import AppLayout from './AppLayout'
 import PageContainer from './PageContainer'
 import PageHeader from './PageHeader'
@@ -35,13 +37,15 @@ describe('PageHeader', () => {
 describe('AppLayout (existing behaviour preserved)', () => {
   it('keeps the skip link, landmarks, home link and prototype notice', () => {
     render(
-      <MemoryRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<p>Page content</p>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
+      <AuthProvider>
+        <MemoryRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route index element={<p>Page content</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
     )
     expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main-content')
     expect(screen.getByRole('banner')).toBeInTheDocument()
@@ -49,5 +53,7 @@ describe('AppLayout (existing behaviour preserved)', () => {
     expect(screen.getByRole('main')).toHaveTextContent('Page content')
     expect(screen.getByRole('link', { name: 'SakshamPay home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('contentinfo')).toHaveTextContent('All payments are simulated')
+    // P-8: signed-out visitors see the sign-in action in the header.
+    expect(screen.getByRole('navigation', { name: 'Account' })).toContainElement(screen.getByRole('link', { name: 'Sign in' }))
   })
 })

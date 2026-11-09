@@ -133,7 +133,8 @@ stacks on mobile and switches to a row from `sm`.
 | `Button` | `variant`: primary, secondary, ghost, danger. `size`: sm 32 px, md 40 px, lg 48 px. Also `fullWidth`, `loading`, `leadingIcon`, `trailingIcon`, and `to` (renders a router link) | `type="button"` by default. `loading` sets `disabled` and `aria-busy` and keeps the label. Icons are `aria-hidden` |
 | `IconButton` | Icon-only action | `label` is required: it becomes `aria-label` and `title`. Warns in development if it is missing |
 | `Label` | Form label | `optional` appends "(optional)" in words |
-| `Input` | Text input with optional `prefix`/`suffix` (e.g. ₹) | 16 px text, 3.63:1 outline. `invalid` sets `aria-invalid` and the danger border. Adornments are `aria-hidden` |
+| `Input` | Text input with optional `prefix`/`suffix` (e.g. ₹) and `endAction` (an interactive control inside the frame) | 16 px text, 3.63:1 outline. `invalid` sets `aria-invalid` and the danger border. `prefix`/`suffix` are `aria-hidden`; `endAction` is not |
+| `PasswordInput` (P-8) | `Input` with a show/hide toggle | The toggle is a real button named "Show password" with `aria-pressed` and `aria-controls`. It never submits the form |
 | `Field` | Label + control + hint + error | Generates ids and wires `htmlFor`, `aria-describedby` (hint, error), `aria-required` and `aria-invalid`. The child is a render function: `{(control) => <Input {...control} />}` |
 | `Card`, `CardHeader`, `CardBody`, `CardFooter` | Bordered surface | Pair `aria-labelledby` with `CardHeader titleId` to make a named region. `titleAs` sets the heading level |
 | `Badge` | Neutral, brand or danger label | **No risk tones** |

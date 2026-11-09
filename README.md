@@ -18,7 +18,8 @@ authorisation.
 | Hosting | Vercel (frontend), Render (backend), managed PostgreSQL |
 
 Architecture decisions: [`docs/architecture.md`](docs/architecture.md). UI tokens and
-components: [`docs/design-system.md`](docs/design-system.md).
+components: [`docs/design-system.md`](docs/design-system.md). Sign-in screens and token
+handling: [`docs/frontend-authentication.md`](docs/frontend-authentication.md).
 
 ## Repository layout
 
@@ -37,7 +38,8 @@ sakshampay/
 │   │   ├── utils/          helpers (validated env access, cx, formatINR)
 │   │   ├── styles/         Tailwind entry and design tokens
 │   │   ├── test/           Vitest setup
-│   │   ├── routes.jsx      route table (dev-only /__ui gallery)
+│   │   ├── context/        AuthProvider (authentication state)
+│   │   ├── routes.jsx      route table (public, signed-out, signed-in; dev-only /__ui)
 │   │   ├── App.jsx         router
 │   │   └── main.jsx        entry point
 │   ├── .env.example
@@ -148,7 +150,8 @@ npm run dev
 
 Open http://localhost:5173. The "API connection" panel should report
 **Connected to SakshamPay API v1.0.0** while the backend is running.
-The UI component gallery is at http://localhost:5173/__ui (development server only).
+Create an account at http://localhost:5173/register, then sign in; `/account` shows your
+profile. The UI component gallery is at http://localhost:5173/__ui (development server only).
 
 Run both servers in two terminals at the same time.
 
@@ -229,6 +232,11 @@ Register, sign in and call protected endpoints with a bearer token: see
 | `POST /api/v1/auth/login` | Get a 30-minute access token |
 | `GET /api/v1/auth/me` | The signed-in user's profile (requires `Authorization: Bearer <token>`) |
 
+Frontend pages: `/register`, `/login` and the protected `/account`. The token is kept in
+`sessionStorage` (never `localStorage`); sign-out is client-side because the backend has
+no logout endpoint. Details and trade-offs:
+[`docs/frontend-authentication.md`](docs/frontend-authentication.md).
+
 ## Deployment notes
 
 **Render (backend):** root directory `backend`; build command
@@ -241,12 +249,17 @@ pins 3.13).
 **Vercel (frontend):** root directory `frontend`; framework preset Vite; set
 `VITE_API_BASE_URL=https://<your-render-service>/api/v1`.
 
+**Required before going live:** add a Content-Security-Policy header to
+`frontend/vercel.json` with `connect-src` naming the real Render API origin (deferred in
+P-8 until the domains are known). The exact policy is in
+[`docs/frontend-authentication.md`](docs/frontend-authentication.md#deployment-requirement-content-security-policy).
+
 ## Status
 
-P-7 (UI/UX foundation) complete: design tokens, IBM Plex Sans, accessible UI components,
-page layouts, a development-only component gallery and frontend tests. Earlier: P-6
-authentication, P-5 database operations. Payments, risk assessment and product screens
-are implemented in later stages.
+P-8 (authentication frontend) complete: registration, sign-in, session restore and
+expiry, protected routing and a minimal account page. Earlier: P-7 UI foundation, P-6
+backend authentication, P-5 database operations. The dashboard, payments and risk
+screens are implemented in later stages.
 
 ## License
 

@@ -11,7 +11,7 @@ export default function PageHeader({ title, eyebrow, description, actions, class
       <div className="min-w-0">
         {eyebrow && <p className="text-sm font-medium text-brand">{eyebrow}</p>}
         <h1 className={cx('text-3xl font-semibold tracking-tight text-ink', eyebrow && 'mt-1')}>{title}</h1>
-        {description && <p className="mt-2 max-w-2xl text-base text-ink-muted">{description}</p>}
+        {description && <p className="mt-2 max-w-2xl text-base break-words text-ink-muted">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>}
     </header>
