@@ -102,3 +102,16 @@ Operations guide: [`database-operations.md`](database-operations.md).
 - Two database roles recommended: owner (migrations) and app (least privilege,
   `backend/scripts/grant_app_privileges.sql`).
 - Seed data: `python -m seeds.dev_seed`, repeatable, refused in production.
+
+## P-6 implementation notes
+
+Guide: [`authentication.md`](authentication.md).
+
+- `app/core/security.py`: Argon2id (argon2-cffi defaults) and HS256 JWTs with claims
+  `sub`, `iat`, `exp` only; no fallback key (503 `AUTH_NOT_CONFIGURED`).
+- `app/services/auth.py`: registration and login; identical `INVALID_CREDENTIALS` for every
+  login failure with constant-work verification; P-1 lockout (5 failures, 15 minutes) via an
+  atomic counter update; audit events and an `ACCOUNT_LOCKED` alert.
+- `app/routes/dependencies.py`: `CurrentUser` (token checked before the database is touched;
+  user must exist and be active). Future protected routers use it.
+- No migration: the P-4 users table already had every needed column.

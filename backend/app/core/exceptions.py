@@ -43,6 +43,7 @@ class AppError(Exception):
     status_code: int = status.HTTP_400_BAD_REQUEST
     code: str = "BAD_REQUEST"
     message: str = "The request could not be processed."
+    headers: dict[str, str] | None = None  # e.g. WWW-Authenticate on 401
 
     def __init__(self, message: str | None = None, *, code: str | None = None, status_code: int | None = None):
         self.message = message or self.message
@@ -88,7 +89,7 @@ def error_body(code: str, message: str, **extra) -> dict:
 async def _app_error_handler(_: Request, exc: AppError) -> JSONResponse:
     log = logger.error if exc.status_code >= 500 else logger.info
     log("Application error", extra={"code": exc.code, "status_code": exc.status_code})
-    return JSONResponse(status_code=exc.status_code, content=error_body(exc.code, exc.message))
+    return JSONResponse(status_code=exc.status_code, content=error_body(exc.code, exc.message), headers=exc.headers)
 
 
 async def _http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:

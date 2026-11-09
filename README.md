@@ -167,9 +167,10 @@ value is left unset: `DEBUG=true`, `LOG_LEVEL=DEBUG`, `LOG_FORMAT=console`.
 | `DB_CONNECT_TIMEOUT_SECONDS` | `5` | Fail fast when the server is unreachable |
 | `DB_STATEMENT_TIMEOUT_MS` | `3000` | PostgreSQL cancels longer queries |
 | `DB_ECHO` | `false` | Logs SQL with parameters; rejected in production |
-| `JWT_SECRET_KEY` | empty | Required in production, 32+ characters. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+| `JWT_SECRET_KEY` | empty | Required for sign-in in every environment (no fallback), 32+ characters. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `JWT_ALGORITHM` | `HS256` | Only HS256 is accepted |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | 1–1440 |
+| `LOGIN_MAX_FAILED_ATTEMPTS` / `LOGIN_LOCKOUT_MINUTES` | `5` / `15` | Account lockout after repeated wrong passwords |
 | `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS allowlist, comma-separated `scheme://host[:port]`; https only in production |
 | `MAX_REQUEST_BODY_BYTES` | `1048576` | Larger declared bodies get 413 |
 | `LOG_LEVEL` | DEBUG in development, else INFO | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
@@ -211,6 +212,18 @@ alembic current               # show the applied revision
 python -m seeds.dev_seed      # load fictional development data (refused in production)
 ```
 
+## Authentication
+
+Register, sign in and call protected endpoints with a bearer token: see
+[`docs/authentication.md`](docs/authentication.md). `JWT_SECRET_KEY` must be set in
+`backend\.env` (32+ characters) for sign-in to work.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/v1/auth/register` | Create an account |
+| `POST /api/v1/auth/login` | Get a 30-minute access token |
+| `GET /api/v1/auth/me` | The signed-in user's profile (requires `Authorization: Bearer <token>`) |
+
 ## Deployment notes
 
 **Render (backend):** root directory `backend`; build command
@@ -225,8 +238,8 @@ pins 3.13).
 
 ## Status
 
-P-5 (database operations and PostgreSQL integration) complete: migrations, repositories,
-database-level audit protection and development seed data. Authentication, database models, payments and
+P-6 (authentication) complete: registration, Argon2id password hashing, login with
+lockout, JWT access tokens and protected endpoints. Earlier: P-5 database operations. Authentication, database models, payments and
 fraud detection are implemented in later stages.
 
 ## License
