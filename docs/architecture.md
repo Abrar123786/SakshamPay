@@ -115,3 +115,20 @@ Guide: [`authentication.md`](authentication.md).
 - `app/routes/dependencies.py`: `CurrentUser` (token checked before the database is touched;
   user must exist and be active). Future protected routers use it.
 - No migration: the P-4 users table already had every needed column.
+
+## P-7 implementation notes
+
+Guide: [`design-system.md`](design-system.md). Frontend only; no backend changes.
+
+- Design tokens in `frontend/src/styles/index.css` (Tailwind v4 `@theme`): warm neutrals,
+  brand teal, separate `danger` tokens for errors, and `risk-low/medium/high` used only by
+  `RiskBadge` (enforced by a test). Chromatic Tailwind palettes are removed; neutral
+  ramps remain.
+- IBM Plex Sans is self-hosted with `@fontsource-variable/ibm-plex-sans`; no third-party
+  font requests.
+- Components in `frontend/src/components/ui/`, plus `PageContainer` and `PageHeader`
+  layouts. Existing ErrorFallback, BackendStatus, NotFoundPage and AppLayout now use
+  them, with the same behaviour and text.
+- Route table moved to `frontend/src/routes.jsx`. The `/__ui` gallery is registered only
+  in development (`import.meta.env.DEV`) and is absent from production builds.
+- Frontend tests: Vitest + React Testing Library (`npm test`).

@@ -15,4 +15,11 @@ export default defineConfig({
     port: 4173,
     strictPort: true,
   },
+  // Vitest (npm test). Components are tested in jsdom with Testing Library.
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+    include: ['src/**/*.test.{js,jsx}'],
+    restoreMocks: true,
+  },
 })
