@@ -2,16 +2,25 @@ import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import AuthProvider from './context/AuthProvider'
 import { createRoutes, UI_GALLERY_PATH } from './routes'
 import * as systemService from './services/systemService'
 
 function renderAt(path, options) {
   const router = createMemoryRouter(createRoutes(options), { initialEntries: [path] })
-  return render(<RouterProvider router={router} />)
+  return render(
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>,
+  )
 }
 
+// Paths under the root layout, in order. P-8 groups some routes under pathless
+// guard routes (GuestOnly, RequireAuth); their children are listed in place.
 function childPaths(routes) {
-  return routes[0].children.map((route) => route.path ?? '(index)')
+  return routes[0].children.flatMap((route) =>
+    route.index ? ['(index)'] : route.path ? [route.path] : route.children.map((child) => child.path),
+  )
 }
 
 describe('route table', () => {
@@ -20,7 +29,7 @@ describe('route table', () => {
   })
 
   it('keeps the existing routes', () => {
-    expect(childPaths(createRoutes({ includeDevRoutes: false }))).toEqual(['(index)', '*'])
+    expect(childPaths(createRoutes({ includeDevRoutes: false }))).toEqual(['(index)', 'login', 'register', 'account', '*'])
   })
 
   it('production route table has no UI gallery', () => {
@@ -33,7 +42,7 @@ describe('route table', () => {
   })
 
   it('development route table includes the gallery before the catch-all', () => {
-    expect(childPaths(createRoutes({ includeDevRoutes: true }))).toEqual(['(index)', '__ui', '*'])
+    expect(childPaths(createRoutes({ includeDevRoutes: true }))).toEqual(['(index)', 'login', 'register', 'account', '__ui', '*'])
   })
 
   it('/__ui renders the gallery in development', async () => {

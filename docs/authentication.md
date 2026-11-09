@@ -1,8 +1,9 @@
 # SakshamPay authentication (P-6)
 
-Email-and-password sign-in issuing short-lived JWT access tokens. Backend only; the
-frontend screens come in a later phase. All commands are PowerShell, run from `backend`
-with the virtual environment active.
+Email-and-password sign-in issuing short-lived JWT access tokens. This guide covers the
+backend; the sign-in screens (P-8) are described in
+[`frontend-authentication.md`](frontend-authentication.md). All commands are PowerShell,
+run from `backend` with the virtual environment active.
 
 ## Architecture
 
@@ -165,5 +166,5 @@ The tests use a lighter Argon2id cost to stay fast (`fast_password_hashing` fixt
   existing tokens because every request re-checks the user.
 - Behind a proxy (Render), audit IP addresses are the proxy's unless Uvicorn is started with
   `--proxy-headers --forwarded-allow-ips=...`.
-- Tokens are meant to be kept in `sessionStorage` by the frontend (P-1 decision D12); that
-  choice is implemented with the frontend screens.
+- The frontend keeps the token in `sessionStorage` (P-1 decision D12, implemented in P-8;
+  see [`frontend-authentication.md`](frontend-authentication.md)).

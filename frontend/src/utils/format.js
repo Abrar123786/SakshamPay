@@ -20,6 +20,15 @@ const wholeRupees = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 })
 
+const longDate = new Intl.DateTimeFormat('en-IN', { dateStyle: 'long' })
+
+/** '2026-11-09T10:00:00Z' -> '9 November 2026' (in the viewer's time zone). */
+export function formatDate(isoString) {
+  const date = new Date(isoString)
+  if (Number.isNaN(date.getTime())) throw new TypeError(`formatDate expects an ISO date, received ${isoString}`)
+  return longDate.format(date)
+}
+
 export function formatINR(paise, { showPaise = true } = {}) {
   if (!Number.isSafeInteger(paise)) {
     throw new TypeError(`formatINR expects integer paise, received ${paise}`)

@@ -14,6 +14,7 @@ import {
   InlineAlert,
   Input,
   LoadingState,
+  PasswordInput,
   RiskBadge,
   Skeleton,
 } from '../../components/ui'
@@ -179,6 +180,9 @@ export default function UiGalleryPage() {
           </Field>
           <Field label="Account reference" hint="Locked after the beneficiary is saved.">
             {(control) => <Input value="XXXXXXXX4321" disabled readOnly {...control} />}
+          </Field>
+          <Field label="Password" hint="PasswordInput: the eye button toggles visibility (aria-pressed).">
+            {(control) => <PasswordInput autoComplete="off" defaultValue="example-passphrase" {...control} />}
           </Field>
         </div>
       </Section>
