@@ -1,43 +1,88 @@
 @import "tailwindcss";
 
 /*
- * SakshamPay design tokens (Tailwind v4 CSS-first configuration).
+ * SakshamPay design tokens (Tailwind v4, CSS-first). Reference: docs/design-system.md
  *
- * Palette rules from P-1:
- *   - one neutral ink + warm off-white surface
- *   - one brand accent, used for primary actions and links only
- *   - three risk colours, used ONLY to communicate risk category
- * No gradients, glows or decorative colour.
+ * Colour rules (P-1, P-7):
+ *   - brand teal for primary actions, links and positive/informational feedback
+ *   - neutrals for text, surfaces and lines (Tailwind's neutral ramps stay available)
+ *   - danger red for application errors and destructive actions
+ *   - risk-low / risk-medium / risk-high ONLY inside RiskBadge (enforced by a test)
+ *
+ * Every text/background pairing below meets WCAG 2.2 AA; ratios are listed in the docs.
  */
 @theme {
-  --font-sans: "Inter", "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Tailwind's chromatic palettes are removed so brand- and risk-like hues cannot
+     appear by accident (bg-green-500, text-red-600 and so on generate nothing).
+     Neutral ramps (slate, gray, zinc, neutral, stone), black and white are kept. */
+  --color-red-*: initial;
+  --color-orange-*: initial;
+  --color-amber-*: initial;
+  --color-yellow-*: initial;
+  --color-lime-*: initial;
+  --color-green-*: initial;
+  --color-emerald-*: initial;
+  --color-teal-*: initial;
+  --color-cyan-*: initial;
+  --color-sky-*: initial;
+  --color-blue-*: initial;
+  --color-indigo-*: initial;
+  --color-violet-*: initial;
+  --color-purple-*: initial;
+  --color-fuchsia-*: initial;
+  --color-pink-*: initial;
+  --color-rose-*: initial;
+
+  /* Typography: IBM Plex Sans (self-hosted, digits tabular by default) */
+  --font-sans: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Neutrals */
-  --color-ink: #14181f;
-  --color-ink-muted: #4b5361;
-  --color-ink-subtle: #6b7380;
-  --color-surface: #f7f6f3;
-  --color-surface-raised: #ffffff;
-  --color-line: #e2e0da;
-  --color-line-strong: #c9c6be;
+  --color-ink: #14181f; /* primary text            16.46:1 on surface */
+  --color-ink-muted: #4b5361; /* secondary text           7.17:1 */
+  --color-ink-subtle: #5f6773; /* captions, placeholders   5.29:1 (was #6b7380, 4.43:1) */
+  --color-ink-disabled: #8a8f98; /* disabled text only (exempt from contrast) */
+  --color-surface: #f7f6f3; /* page background */
+  --color-surface-raised: #ffffff; /* cards, inputs, header */
+  --color-surface-muted: #efede8; /* hover rows, table headers, neutral badges */
+  --color-line: #e2e0da; /* decorative dividers and card edges */
+  --color-line-strong: #c9c6be; /* emphasised dividers */
+  --color-line-input: #8a867d; /* form-control outlines   3.63:1 on white (needs 3:1) */
 
-  /* Brand accent (deep teal) */
-  --color-brand: #0f5c63;
-  --color-brand-hover: #0b4a50;
-  --color-brand-soft: #e3eff0;
+  /* Brand (primary) */
+  --color-brand: #0f5c63; /* white text 7.69:1 */
+  --color-brand-hover: #0b4a50; /* white text 9.95:1 */
+  --color-brand-soft: #e3eff0; /* brand text 6.54:1 */
 
-  /* Risk categories: never used for decoration */
+  /* Semantic feedback (interface messages; never risk) */
+  --color-info: var(--color-brand);
+  --color-info-soft: var(--color-brand-soft);
+  --color-success: var(--color-brand); /* confirmations use brand teal: green means LOW risk */
+  --color-success-soft: var(--color-brand-soft);
+  --color-danger: #b42318; /* errors, destructive actions; white text 6.57:1 */
+  --color-danger-hover: #912018; /* white text 8.66:1 */
+  --color-danger-soft: #fbe9e7; /* danger text 5.61:1 */
+  --color-danger-line: #e8a29b; /* border of danger banners (decorative) */
+
+  /* Risk categories: RiskBadge only */
   --color-risk-low: #1d6b3a;
   --color-risk-low-soft: #e6f2ea;
   --color-risk-medium: #8a5a00;
   --color-risk-medium-soft: #faf0dc;
   --color-risk-high: #a3271f;
   --color-risk-high-soft: #fbe9e7;
+
+  /* Elevation: borders do the work; shadows only for floating layers */
+  --shadow-xs: 0 1px 2px 0 rgb(20 24 31 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(20 24 31 / 0.08), 0 1px 2px -1px rgb(20 24 31 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(20 24 31 / 0.1), 0 2px 4px -2px rgb(20 24 31 / 0.06);
+  --shadow-lg: 0 12px 32px -8px rgb(20 24 31 / 0.18), 0 4px 8px -4px rgb(20 24 31 / 0.06);
 }
 
 @layer base {
   html {
+    color-scheme: light;
     color: var(--color-ink);
     background-color: var(--color-surface);
     -webkit-font-smoothing: antialiased;
@@ -49,6 +94,12 @@
     font-family: var(--font-sans);
   }
 
+  ::selection {
+    background-color: var(--color-brand-soft);
+    color: var(--color-ink);
+  }
+
+  /* One focus indicator for every focusable element: 2px brand, 7.11:1 on surface. */
   :focus-visible {
     outline: 2px solid var(--color-brand);
     outline-offset: 2px;

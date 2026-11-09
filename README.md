@@ -17,7 +17,8 @@ authorisation.
 | Auth | Argon2id password hashing, JWT (HS256) |
 | Hosting | Vercel (frontend), Render (backend), managed PostgreSQL |
 
-Architecture decisions: [`docs/architecture.md`](docs/architecture.md).
+Architecture decisions: [`docs/architecture.md`](docs/architecture.md). UI tokens and
+components: [`docs/design-system.md`](docs/design-system.md).
 
 ## Repository layout
 
@@ -27,15 +28,17 @@ sakshampay/
 │   ├── public/             static files (favicon)
 │   ├── src/
 │   │   ├── assets/         images and fonts used by components
-│   │   ├── components/     reusable UI (ErrorBoundary, Logo, ...)
-│   │   ├── layouts/        page shells (AppLayout)
+│   │   ├── components/     app components; ui/ = design-system primitives (P-7)
+│   │   ├── layouts/        page shells (AppLayout, PageContainer, PageHeader)
 │   │   ├── pages/          one component per route
 │   │   ├── hooks/          reusable stateful logic
 │   │   ├── services/       API client and one module per API group
 │   │   ├── context/        React context providers (auth, later)
-│   │   ├── utils/          helpers (validated env access)
+│   │   ├── utils/          helpers (validated env access, cx, formatINR)
 │   │   ├── styles/         Tailwind entry and design tokens
-│   │   ├── App.jsx         route table
+│   │   ├── test/           Vitest setup
+│   │   ├── routes.jsx      route table (dev-only /__ui gallery)
+│   │   ├── App.jsx         router
 │   │   └── main.jsx        entry point
 │   ├── .env.example
 │   ├── vercel.json         SPA rewrites + security headers
@@ -145,6 +148,7 @@ npm run dev
 
 Open http://localhost:5173. The "API connection" panel should report
 **Connected to SakshamPay API v1.0.0** while the backend is running.
+The UI component gallery is at http://localhost:5173/__ui (development server only).
 
 Run both servers in two terminals at the same time.
 
@@ -196,6 +200,7 @@ pytest
 #   PowerShell: $env:TEST_DATABASE_URL="postgresql://..."; pytest
 
 # frontend (from frontend/)
+npm test
 npm run lint
 npm run build
 ```
@@ -238,9 +243,10 @@ pins 3.13).
 
 ## Status
 
-P-6 (authentication) complete: registration, Argon2id password hashing, login with
-lockout, JWT access tokens and protected endpoints. Earlier: P-5 database operations. Authentication, database models, payments and
-fraud detection are implemented in later stages.
+P-7 (UI/UX foundation) complete: design tokens, IBM Plex Sans, accessible UI components,
+page layouts, a development-only component gallery and frontend tests. Earlier: P-6
+authentication, P-5 database operations. Payments, risk assessment and product screens
+are implemented in later stages.
 
 ## License
 

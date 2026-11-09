@@ -1,6 +1,7 @@
 import { Link, Outlet } from 'react-router'
 
 import Logo from '../components/Logo'
+import PageContainer from './PageContainer'
 
 /**
  * Base public layout: header, page content, footer.
@@ -17,12 +18,12 @@ export default function AppLayout() {
       </a>
 
       <header className="border-b border-line bg-surface-raised">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <PageContainer className="flex h-16 items-center justify-between">
           <Link to="/" className="rounded-sm" aria-label="SakshamPay home">
             <Logo />
           </Link>
           <p className="hidden text-sm text-ink-subtle sm:block">Prototype environment</p>
-        </div>
+        </PageContainer>
       </header>
 
       <main id="main-content" className="flex-1">
@@ -30,10 +31,10 @@ export default function AppLayout() {
       </main>
 
       <footer className="border-t border-line">
-        <div className="mx-auto max-w-6xl px-6 py-6 text-sm text-ink-subtle">
+        <PageContainer className="py-6 text-sm text-ink-subtle">
           SakshamPay is a hackathon prototype. All payments are simulated; it is not connected to
           UPI, NPCI or any bank.
-        </div>
+        </PageContainer>
       </footer>
     </div>
   )

@@ -1,16 +1,16 @@
 import { RefreshCw, TriangleAlert } from 'lucide-react'
 
+import Button from './ui/Button'
+
 /**
  * Full-page fallback shown when rendering fails.
  * Used by both the global ErrorBoundary and the router's errorElement.
+ * Application errors use the danger tokens; risk colours are reserved for risk.
  */
 export default function ErrorFallback({ title = 'Something went wrong', detail }) {
   return (
-    <main
-      role="alert"
-      className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-16"
-    >
-      <div className="flex items-center gap-2 text-risk-high">
+    <main role="alert" className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-4 py-16 sm:px-6">
+      <div className="flex items-center gap-2 text-danger">
         <TriangleAlert aria-hidden="true" className="size-5" strokeWidth={1.75} />
         <p className="text-sm font-medium">Application error</p>
       </div>
@@ -24,14 +24,9 @@ export default function ErrorFallback({ title = 'Something went wrong', detail }
         </pre>
       )}
       <div className="mt-8">
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="inline-flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover"
-        >
-          <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.75} />
+        <Button leadingIcon={RefreshCw} onClick={() => window.location.reload()}>
           Reload page
-        </button>
+        </Button>
       </div>
     </main>
   )
