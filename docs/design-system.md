@@ -134,6 +134,7 @@ stacks on mobile and switches to a row from `sm`.
 | `IconButton` | Icon-only action | `label` is required: it becomes `aria-label` and `title`. Warns in development if it is missing |
 | `Label` | Form label | `optional` appends "(optional)" in words |
 | `Input` | Text input with optional `prefix`/`suffix` (e.g. ₹) and `endAction` (an interactive control inside the frame) | 16 px text, 3.63:1 outline. `invalid` sets `aria-invalid` and the danger border. `prefix`/`suffix` are `aria-hidden`; `endAction` is not |
+| `SignedInNav` (P-9, `components/navigation`) | Header navigation for signed-in users from `SIGNED_IN_NAV_ITEMS` | Inline links from 640 px with `aria-current="page"`; below 640 px a **Menu** disclosure button (`aria-expanded`/`aria-controls`) that closes on Escape (focus returns), an outside click and navigation |
 | `PasswordInput` (P-8) | `Input` with a show/hide toggle | The toggle is a real button named "Show password" with `aria-pressed` and `aria-controls`. It never submits the form |
 | `Field` | Label + control + hint + error | Generates ids and wires `htmlFor`, `aria-describedby` (hint, error), `aria-required` and `aria-invalid`. The child is a render function: `{(control) => <Input {...control} />}` |
 | `Card`, `CardHeader`, `CardBody`, `CardFooter` | Bordered surface | Pair `aria-labelledby` with `CardHeader titleId` to make a named region. `titleAs` sets the heading level |

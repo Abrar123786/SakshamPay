@@ -2,6 +2,8 @@ import { Link, Outlet } from 'react-router'
 
 import AuthNav from '../components/auth/AuthNav'
 import Logo from '../components/Logo'
+import { useAuth } from '../context/authContext'
+import { DASHBOARD_PATH } from '../utils/authPaths'
 import PageContainer from './PageContainer'
 
 /**
@@ -9,6 +11,8 @@ import PageContainer from './PageContainer'
  * Used by public, signed-out and signed-in pages alike.
  */
 export default function AppLayout() {
+  const { status } = useAuth()
+
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -18,9 +22,10 @@ export default function AppLayout() {
         Skip to content
       </a>
 
-      <header className="border-b border-line bg-surface-raised">
+      {/* relative: anchors the signed-in phone menu panel below the header */}
+      <header className="relative border-b border-line bg-surface-raised">
         <PageContainer className="flex h-16 items-center justify-between gap-4">
-          <Link to="/" className="rounded-sm" aria-label="SakshamPay home">
+          <Link to={status === 'authenticated' ? DASHBOARD_PATH : '/'} className="rounded-sm" aria-label="SakshamPay home">
             <Logo />
           </Link>
           <div className="flex items-center gap-4">

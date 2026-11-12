@@ -3,9 +3,10 @@
 export const LOGIN_PATH = '/login'
 export const REGISTER_PATH = '/register'
 export const ACCOUNT_PATH = '/account'
+export const DASHBOARD_PATH = '/dashboard'
 
-/** Where a signed-in user goes by default. P-9 will change this to the dashboard. */
-export const DEFAULT_SIGNED_IN_PATH = ACCOUNT_PATH
+/** Where a signed-in user goes by default (P-9: the dashboard). */
+export const DEFAULT_SIGNED_IN_PATH = DASHBOARD_PATH
 
 /**
  * The page to return to after signing in. Only in-app paths are accepted (a single

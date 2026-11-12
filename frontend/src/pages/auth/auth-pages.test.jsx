@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PasswordInput from '../../components/ui/PasswordInput'
 import { ApiError } from '../../services/apiClient'
 import * as authService from '../../services/authService'
+import * as dashboardService from '../../services/dashboardService'
 import * as systemService from '../../services/systemService'
 import { getSession, saveSession } from '../../services/tokenStore'
 import { renderApp, TEST_TOKEN, TEST_USER } from '../../test/renderApp'
@@ -14,6 +15,8 @@ const PASSWORD = 'a-long-passphrase'
 
 beforeEach(() => {
   vi.spyOn(systemService, 'getHealth').mockReturnValue(new Promise(() => {}))
+  // P-9: signing in now lands on the dashboard; keep its request off the network.
+  vi.spyOn(dashboardService, 'getDashboardSummary').mockReturnValue(new Promise(() => {}))
 })
 
 const apiError = (status, code, message, extra = {}) => new ApiError({ status, code, message, requestId: 'req-42', ...extra })
@@ -102,7 +105,7 @@ describe('LoginPage', () => {
     await user.keyboard('{Enter}')
     expect(request).toHaveBeenCalledOnce()
     resolve(TEST_TOKEN)
-    await screen.findByRole('heading', { name: 'Your account' })
+    await screen.findByRole('heading', { name: 'Welcome back, Asha' }) // P-9 default page
   })
 
   it('sends the normalised email and the password exactly as typed', async () => {
@@ -113,7 +116,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email address'), '  Asha@Example.com ')
     await user.type(screen.getByLabelText('Password'), ' pass with spaces ')
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
-    await screen.findByRole('heading', { name: 'Your account' })
+    await screen.findByRole('heading', { name: 'Welcome back, Asha' }) // P-9 default page
     expect(request).toHaveBeenCalledWith({ email: 'asha@example.com', password: ' pass with spaces ' })
   })
 

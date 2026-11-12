@@ -21,6 +21,24 @@ const wholeRupees = new Intl.NumberFormat('en-IN', {
 })
 
 const longDate = new Intl.DateTimeFormat('en-IN', { dateStyle: 'long' })
+const shortDate = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+const wholeNumber = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 })
+
+/** Counts with Indian digit grouping: 1234567 -> '12,34,567'. */
+export function formatNumber(value) {
+  if (!Number.isSafeInteger(value)) throw new TypeError(`formatNumber expects an integer, received ${value}`)
+  return wholeNumber.format(value)
+}
+
+/** Two ISO timestamps as a compact range in the viewer's time zone, e.g. '11 Oct – 10 Nov 2026'. */
+export function formatDateRange(startIso, endIso) {
+  const start = new Date(startIso)
+  const end = new Date(endIso)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new TypeError(`formatDateRange expects ISO dates, received ${startIso}, ${endIso}`)
+  }
+  return shortDate.formatRange(start, end)
+}
 
 /** '2026-11-09T10:00:00Z' -> '9 November 2026' (in the viewer's time zone). */
 export function formatDate(isoString) {

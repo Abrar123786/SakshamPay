@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.models import (
@@ -201,6 +201,49 @@ class TransactionRepository(Repository):
             .limit(clamp_limit(limit))
         )
         return list(self.session.scalars(query))
+
+    # ---- aggregates (read-only, one user, a created_at window) ------------------------
+    # The window is start <= created_at <= end; it uses ix_transactions_user_id_created_at.
+
+    def _in_window(self, user_id: uuid.UUID, start: datetime, end: datetime):
+        return (Transaction.user_id == user_id, Transaction.created_at >= start, Transaction.created_at <= end)
+
+    def count_by_status(self, user_id: uuid.UUID, *, start: datetime, end: datetime) -> dict[TransactionStatus, int]:
+        """Stored status of each of the user's transactions in the window. Every status is present (0 if none)."""
+        rows = self.session.execute(
+            select(Transaction.status, func.count())
+            .where(*self._in_window(user_id, start, end))
+            .group_by(Transaction.status)
+        )
+        counts = {status: 0 for status in TransactionStatus}
+        for status, count in rows:
+            counts[TransactionStatus(status)] = count
+        return counts
+
+    def sum_amount(self, user_id: uuid.UUID, *, status: TransactionStatus, start: datetime, end: datetime) -> int:
+        """Total amount_paise of the user's transactions with this status in the window (0 if none)."""
+        total = self.session.scalar(
+            select(func.coalesce(func.sum(Transaction.amount_paise), 0)).where(
+                *self._in_window(user_id, start, end), Transaction.status == status
+            )
+        )
+        return int(total)
+
+    def count_awaiting_action(self, user_id: uuid.UUID, *, now: datetime, start: datetime, end: datetime) -> int:
+        """AWAITING_USER_ACTION whose decision window is still open (expires_at >= now).
+
+        A row past expires_at that the sweep has not yet marked EXPIRED is not
+        counted: the user can no longer act on it. Same boundary as list_expired_awaiting.
+        """
+        return self.session.scalar(
+            select(func.count())
+            .select_from(Transaction)
+            .where(
+                *self._in_window(user_id, start, end),
+                Transaction.status == S.AWAITING_USER_ACTION,
+                Transaction.expires_at >= now,
+            )
+        )
 
     # ---- lifecycle --------------------------------------------------------------------
 

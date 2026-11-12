@@ -8,6 +8,8 @@ application's ``Settings`` and stored on ``app.state.database``.
 * ``check_connection()`` never raises; it reports a status for startup logs
   and the readiness endpoint.
 * ``get_db`` is the FastAPI dependency that hands each request its own session.
+* ``get_read_only_db`` hands a read-only endpoint a second, separate session whose
+  transaction is REPEATABLE READ, READ ONLY from its first statement (P-9).
 """
 
 import logging
@@ -123,3 +125,34 @@ def get_db(database: Annotated[Database, Depends(get_database)]) -> Iterator[Ses
 
 
 DbSession = Annotated[Session, Depends(get_db)]
+
+
+# First statement of every read-only session's transaction. PostgreSQL accepts an
+# isolation level only before any query in the transaction, so this statement also
+# proves nothing ran before it; REPEATABLE READ gives all the request's queries one
+# consistent snapshot, and READ ONLY makes PostgreSQL reject every write.
+READ_ONLY_TRANSACTION = text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+
+
+def get_read_only_db(database: Annotated[Database, Depends(get_database)]) -> Iterator[Session]:
+    """FastAPI dependency: a separate, read-only session (P-9 dashboard).
+
+    It is independent of the request's ``DbSession`` (which ``CurrentUser`` uses to
+    load the user), so its transaction characteristics are set before any query in
+    *its* transaction, whatever the authentication session has already run.
+
+    Lifecycle: the session is created when the dependency is resolved (after
+    ``CurrentUser`` when declared after it, so a request with a bad token never opens
+    it), starts its transaction with ``READ_ONLY_TRANSACTION``, is never committed,
+    and is closed when the request ends, on success or error. Closing ends the
+    transaction with a rollback and returns the connection to the pool.
+    """
+    session = database.create_session()
+    try:
+        session.execute(READ_ONLY_TRANSACTION)
+        yield session
+    finally:
+        session.close()
+
+
+ReadOnlyDbSession = Annotated[Session, Depends(get_read_only_db)]

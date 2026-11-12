@@ -4,12 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '../../services/apiClient'
 import * as authService from '../../services/authService'
+import * as dashboardService from '../../services/dashboardService'
 import * as systemService from '../../services/systemService'
 import { getSession, saveSession } from '../../services/tokenStore'
 import { renderApp, TEST_TOKEN, TEST_USER } from '../../test/renderApp'
 
 beforeEach(() => {
   vi.spyOn(systemService, 'getHealth').mockReturnValue(new Promise(() => {}))
+  // P-9: signing in now lands on the dashboard; keep its request off the network.
+  vi.spyOn(dashboardService, 'getDashboardSummary').mockReturnValue(new Promise(() => {}))
 })
 
 const signIn = async (user, { email = 'asha@example.com', password = 'a-long-passphrase' } = {}) => {
@@ -42,8 +45,9 @@ describe('protected pages', () => {
     vi.spyOn(authService, 'fetchCurrentUser').mockResolvedValue(TEST_USER)
     const app = renderApp('/login')
     await signIn(user)
-    await screen.findByRole('heading', { name: 'Your account' })
-    expect(app.pathname()).toBe('/account')
+    // P-9: the default signed-in page is the dashboard (was /account in P-8).
+    await screen.findByRole('heading', { level: 1, name: 'Welcome back, Asha' })
+    expect(app.pathname()).toBe('/dashboard')
   })
 
   it('shows a loading state while the stored session is checked, then the page', async () => {
@@ -105,10 +109,10 @@ describe('sign-in and registration pages for signed-in users', () => {
     vi.spyOn(authService, 'fetchCurrentUser').mockResolvedValue(TEST_USER)
   })
 
-  it.each(['/login', '/register'])('%s redirects to the account page', async (path) => {
+  it.each(['/login', '/register'])('%s redirects to the default page (P-9: the dashboard)', async (path) => {
     const app = renderApp(path)
-    expect(await screen.findByRole('heading', { name: 'Your account' })).toBeInTheDocument()
-    expect(app.pathname()).toBe('/account')
+    expect(await screen.findByRole('heading', { name: 'Welcome back, Asha' })).toBeInTheDocument()
+    expect(app.pathname()).toBe('/dashboard')
   })
 })
 
@@ -128,18 +132,20 @@ describe('signing out', () => {
     expect(app.router.state.location.state).toBeNull()
   })
 
-  it('the header switches between sign-in and account actions', async () => {
+  it('the header switches between sign-in actions and the main navigation', async () => {
     const user = userEvent.setup()
     vi.spyOn(authService, 'requestAccessToken').mockResolvedValue(TEST_TOKEN)
     vi.spyOn(authService, 'fetchCurrentUser').mockResolvedValue(TEST_USER)
     renderApp('/login')
-    const nav = () => screen.getByRole('navigation', { name: 'Account' })
-    expect(nav()).toHaveTextContent('Sign in')
+    expect(screen.getByRole('navigation', { name: 'Account' })).toHaveTextContent('Sign in')
     await signIn(user)
-    await screen.findByRole('heading', { name: 'Your account' })
-    expect(nav()).toHaveTextContent('Account')
-    expect(nav()).toHaveTextContent('Sign out')
-    await user.click(within(nav()).getByRole('button', { name: 'Sign out' }))
+    await screen.findByRole('heading', { name: 'Welcome back, Asha' })
+    // P-9: signed-in users get the main navigation (Dashboard, Account) and Sign out.
+    expect(screen.queryByRole('navigation', { name: 'Account' })).not.toBeInTheDocument()
+    const main = screen.getByRole('navigation', { name: 'Main' })
+    expect(within(main).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
+    expect(within(main).getByRole('link', { name: 'Account' })).not.toHaveAttribute('aria-current')
+    await user.click(screen.getByRole('button', { name: 'Sign out' })) // the only one on the dashboard: the header's
     expect(await screen.findByText('You have signed out.')).toBeInTheDocument()
   })
 })
