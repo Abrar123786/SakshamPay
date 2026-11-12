@@ -29,7 +29,7 @@ describe('route table', () => {
   })
 
   it('keeps the existing routes', () => {
-    expect(childPaths(createRoutes({ includeDevRoutes: false }))).toEqual(['(index)', 'login', 'register', 'account', '*'])
+    expect(childPaths(createRoutes({ includeDevRoutes: false }))).toEqual(['(index)', 'login', 'register', 'dashboard', 'account', '*'])
   })
 
   it('production route table has no UI gallery', () => {
@@ -42,7 +42,7 @@ describe('route table', () => {
   })
 
   it('development route table includes the gallery before the catch-all', () => {
-    expect(childPaths(createRoutes({ includeDevRoutes: true }))).toEqual(['(index)', 'login', 'register', 'account', '__ui', '*'])
+    expect(childPaths(createRoutes({ includeDevRoutes: true }))).toEqual(['(index)', 'login', 'register', 'dashboard', 'account', '__ui', '*'])
   })
 
   it('/__ui renders the gallery in development', async () => {

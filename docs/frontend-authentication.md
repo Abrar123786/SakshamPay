@@ -9,16 +9,18 @@ The React side of sign-in. It calls only the three P-6 endpoints
 | --- | --- | --- |
 | `/login` | Signed-out users (`GuestOnly`) | Sign in: email, password with show/hide |
 | `/register` | Signed-out users (`GuestOnly`) | Create an account: full name, email, optional mobile, password, confirm password |
+| `/dashboard` | Signed-in users (`RequireAuth`) | The dashboard (P-9, see [`dashboard.md`](dashboard.md)) |
 | `/account` | Signed-in users (`RequireAuth`) | Profile from `GET /auth/me` and **Sign out** |
 | `/`, unknown paths | Everyone | Landing placeholder, 404 page (unchanged) |
 
 - **Signed out, opening `/account`:** sent to `/login`. After signing in, the user returns
   to `/account`. Later protected pages work the same way.
-- **Signed in, opening `/login` or `/register`:** sent to `/account`
-  (`DEFAULT_SIGNED_IN_PATH` in `src/utils/authPaths.js`; P-9 will point it at the dashboard).
+- **Signed in, opening `/login` or `/register`:** sent to `/dashboard`
+  (`DEFAULT_SIGNED_IN_PATH` in `src/utils/authPaths.js`; it was `/account` in P-8).
 - **While a stored session is being checked:** guarded pages show "Checking your
   session". Public pages render immediately.
-- **The header** shows **Sign in** / **Create account**, or **Account** / **Sign out**.
+- **The header** shows **Sign in** / **Create account**. Signed in, it shows the main
+  navigation and **Sign out** (P-9, a **Menu** button on phones).
 
 ## Flows
 
@@ -155,7 +157,8 @@ npm test
 1. Open http://localhost:5173/account. You are sent to **Sign in**.
 2. **Create an account.** Use a 10-digit mobile number such as `98765 43210`; it is stored as `+919876543210`.
 3. You land on **Sign in** with "Account created" and your email filled in. Sign in.
-4. **Your account** shows your profile. Refresh the page: you stay signed in.
+4. You land on the **Dashboard**. Open **Account** to see your profile. Refresh the
+   page: you stay signed in.
 5. In DevTools → Application → Session storage you see one key, `sakshampay.session`.
    Local storage is empty.
 6. **Sign out**, then press Back. You stay on **Sign in**.

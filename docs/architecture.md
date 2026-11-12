@@ -152,3 +152,26 @@ API contract is unchanged.
 - Gaps kept as decisions for later phases: there is no server-side logout or revocation
   (the backend has no logout endpoint) and no refresh tokens. The production CSP is a
   deployment requirement once the Render and Vercel domains are known.
+
+## P-9 implementation notes
+
+Guide: [`dashboard.md`](dashboard.md). This is the first backend feature since P-6. It
+uses the existing layering (route → service → repositories) with no migration.
+
+- `GET /api/v1/dashboard/summary` (`app/routes/dashboard.py`): `CurrentUser` and
+  `Cache-Control: no-store`. It reports counts by stored status (all seven keys), the
+  approved amount in paise, `awaiting_action` (`expires_at >= now`, the sweep's
+  boundary) and all-time unread alerts, over a rolling 30-day window on `created_at`.
+- The dashboard uses its own session (`ReadOnlyDbSession` in `app/database/session.py`),
+  separate from the `DbSession` that `CurrentUser` uses. Its transaction starts with
+  `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY`. `DashboardService`
+  refuses a read-write session and never commits.
+  Three aggregate methods were added to `TransactionRepository`.
+- Risk statistics, recent transactions and charts are deliberately absent. The stored
+  assessments are seed samples, history is P-11, and Recharts is added only when there
+  is real risk data to chart.
+- Frontend:
+  - top navigation (`SignedInNav`, `SIGNED_IN_NAV_ITEMS`) with a phone disclosure menu;
+  - `DEFAULT_SIGNED_IN_PATH` changed to `/dashboard`;
+  - `DashboardPage` with key figures, status breakdown, empty, loading and error states;
+  - `dashboardService` validates the response, so malformed data is an error, not zeros.

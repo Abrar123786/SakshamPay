@@ -19,7 +19,8 @@ authorisation.
 
 Architecture decisions: [`docs/architecture.md`](docs/architecture.md). UI tokens and
 components: [`docs/design-system.md`](docs/design-system.md). Sign-in screens and token
-handling: [`docs/frontend-authentication.md`](docs/frontend-authentication.md).
+handling: [`docs/frontend-authentication.md`](docs/frontend-authentication.md). Dashboard and
+its API: [`docs/dashboard.md`](docs/dashboard.md).
 
 ## Repository layout
 
@@ -34,11 +35,11 @@ sakshampay/
 │   │   ├── pages/          one component per route
 │   │   ├── hooks/          reusable stateful logic
 │   │   ├── services/       API client and one module per API group
-│   │   ├── context/        React context providers (auth, later)
 │   │   ├── utils/          helpers (validated env access, cx, formatINR)
 │   │   ├── styles/         Tailwind entry and design tokens
 │   │   ├── test/           Vitest setup
 │   │   ├── context/        AuthProvider (authentication state)
+│   │   ├── components/dashboard/, components/navigation/   dashboard and signed-in navigation (P-9)
 │   │   ├── routes.jsx      route table (public, signed-out, signed-in; dev-only /__ui)
 │   │   ├── App.jsx         router
 │   │   └── main.jsx        entry point
@@ -150,8 +151,9 @@ npm run dev
 
 Open http://localhost:5173. The "API connection" panel should report
 **Connected to SakshamPay API v1.0.0** while the backend is running.
-Create an account at http://localhost:5173/register, then sign in; `/account` shows your
-profile. The UI component gallery is at http://localhost:5173/__ui (development server only).
+Create an account at http://localhost:5173/register, then sign in: you land on the
+dashboard at `/dashboard` (`/account` shows your profile). Seeded demo users
+(`python -m seeds.dev_seed`, password in `docs/database-operations.md`) have sample payments. The UI component gallery is at http://localhost:5173/__ui (development server only).
 
 Run both servers in two terminals at the same time.
 
@@ -232,7 +234,11 @@ Register, sign in and call protected endpoints with a bearer token: see
 | `POST /api/v1/auth/login` | Get a 30-minute access token |
 | `GET /api/v1/auth/me` | The signed-in user's profile (requires `Authorization: Bearer <token>`) |
 
-Frontend pages: `/register`, `/login` and the protected `/account`. The token is kept in
+| Dashboard endpoint | Purpose |
+| --- | --- |
+| `GET /api/v1/dashboard/summary` | The signed-in user's last 30 days: counts by status, approved amount, payments awaiting action, unread alerts (read-only; see [`docs/dashboard.md`](docs/dashboard.md)) |
+
+Frontend pages: `/register`, `/login` and the protected `/dashboard` and `/account`. The token is kept in
 `sessionStorage` (never `localStorage`); sign-out is client-side because the backend has
 no logout endpoint. Details and trade-offs:
 [`docs/frontend-authentication.md`](docs/frontend-authentication.md).
@@ -256,10 +262,11 @@ P-8 until the domains are known). The exact policy is in
 
 ## Status
 
-P-8 (authentication frontend) complete: registration, sign-in, session restore and
-expiry, protected routing and a minimal account page. Earlier: P-7 UI foundation, P-6
-backend authentication, P-5 database operations. The dashboard, payments and risk
-screens are implemented in later stages.
+P-9 (dashboard) complete: signed-in navigation and a dashboard of the last 30 days
+backed by the read-only `GET /api/v1/dashboard/summary`. Earlier: P-8 authentication
+frontend, P-7 UI foundation, P-6 backend authentication, P-5 database operations.
+Payments (P-10), transaction history (P-11) and risk scoring are implemented in later
+stages.
 
 ## License
 

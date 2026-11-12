@@ -5,6 +5,7 @@ import RouteError from './components/RouteError'
 import LoadingState from './components/ui/LoadingState'
 import AppLayout from './layouts/AppLayout'
 import AccountPage from './pages/AccountPage'
+import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import LandingPage from './pages/LandingPage'
@@ -23,9 +24,9 @@ export const UI_GALLERY_PATH = '__ui'
  * Route table.
  *   public:            /            (and the 404 page)
  *   signed-out only:   /login, /register   (GuestOnly)
- *   signed-in only:    /account             (RequireAuth)
- * Later prompts add /dashboard, /pay, /transactions/:id/review, /history and /alerts
- * under RequireAuth.
+ *   signed-in only:    /dashboard, /account (RequireAuth)
+ * Later prompts add /pay, /transactions/:id/review, /history and /alerts under
+ * RequireAuth (and to SIGNED_IN_NAV_ITEMS).
  */
 export function createRoutes({ includeDevRoutes = import.meta.env.DEV } = {}) {
   const devRoutes =
@@ -58,7 +59,10 @@ export function createRoutes({ includeDevRoutes = import.meta.env.DEV } = {}) {
         },
         {
           element: <RequireAuth />,
-          children: [{ path: 'account', element: <AccountPage /> }],
+          children: [
+            { path: 'dashboard', element: <DashboardPage /> },
+            { path: 'account', element: <AccountPage /> },
+          ],
         },
         ...devRoutes,
         { path: '*', element: <NotFoundPage /> },
