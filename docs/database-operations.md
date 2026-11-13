@@ -230,3 +230,19 @@ schema from the one deployed. Logic that needs no database is tested without one
 - Use the app role in the service's `DATABASE_URL` if your PostgreSQL host lets you create
   roles; otherwise the triggers still protect history from application code.
 - Never run the seed script against production: it refuses when `APP_ENV=production`.
+
+## 10. Time zones
+
+All timestamp columns are `TIMESTAMP WITH TIME ZONE`, so PostgreSQL stores instants. What
+it *returns* depends on the session `TimeZone`, which defaults to the server's setting
+(an installer often picks the computer's zone, e.g. `Asia/Calcutta`). psycopg then hands
+SQLAlchemy datetimes in that zone. To keep this from leaking into the application:
+
+- every application connection sets `timezone=UTC` (`app/database/session.py`, next to
+  `statement_timeout`); no query depends on the session zone, so this changes no result;
+- every API response timestamp is a `UtcDateTime` (`app/schemas/common.py`) and is written
+  in UTC with a `Z` suffix, keeping its microseconds, whatever zone it arrived in.
+
+`tests/test_api_timestamps_postgres.py` forces an `Asia/Kolkata` session to prove the API
+output is identical either way; `tests/test_api_timestamps.py` fails if a response field
+is typed plain `datetime`.

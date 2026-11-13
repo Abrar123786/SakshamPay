@@ -14,6 +14,7 @@ from app.core.config import MIN_JWT_SECRET_LENGTH, Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.database.session import Database
+from app.fraud_detection.ml import UnavailableScorer
 from app.middleware.request_context import RequestContextMiddleware
 from app.routes import api_router, system
 
@@ -48,6 +49,15 @@ async def lifespan(app: FastAPI):
     if settings.JWT_SECRET_KEY is None or len(settings.JWT_SECRET_KEY.get_secret_value()) < MIN_JWT_SECRET_LENGTH:
         logger.warning("JWT_SECRET_KEY is missing or too short; login and protected endpoints will return 503")
 
+    if settings.IDENTIFIER_HASH_KEY is None:
+        logger.warning("IDENTIFIER_HASH_KEY is not set; adding beneficiaries and making payments will fail")
+
+    if settings.VERIFY_PREFIX_LIMIT_ENABLED:
+        # Only meaningful when the app sees real client addresses (FORWARDED_ALLOW_IPS behind a proxy).
+        logger.info("Per-network Verify limit is on", extra={"limit": settings.VERIFY_PREFIX_FAILURE_LIMIT})
+    if settings.LOGIN_PREFIX_LIMIT_ENABLED:
+        logger.info("Per-network login limit is on", extra={"limit": settings.LOGIN_PREFIX_FAILURE_LIMIT})
+
     yield
 
     logger.info("Shutting down application")
@@ -76,6 +86,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.database = Database(settings)
+    # No anomaly model exists yet: every assessment runs in P-1's rules-only mode.
+    app.state.anomaly_scorer = UnavailableScorer()
 
     # Middleware order: the last one added is the outermost. CORS wraps
     # RequestContextMiddleware so that error responses also carry CORS headers.

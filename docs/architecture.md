@@ -78,6 +78,8 @@ Full schema: [`database-schema.md`](database-schema.md).
   rules-only rows have `final_risk_score = rule_score`. `compute_final_risk_score()` is the
   Python twin.
 - Rule weights total 105 (open decision); `rule_score` is stored capped at 0–100.
+- The risk engine (P-10) is in `app/fraud_detection/`; it runs rules-only until the anomaly
+  model exists. See [`payments.md`](payments.md).
 - Beneficiary account references and UPI IDs are stored masked plus an HMAC fingerprint;
   the fingerprint key setting arrives with the beneficiary service.
 - All foreign keys are `ON DELETE RESTRICT`; composite foreign keys enforce that payees,

@@ -7,6 +7,18 @@ Login never reveals why it failed. Unknown email, wrong password, locked account
 and deactivated account all produce the same InvalidCredentialsError, and every
 path performs one full Argon2id verification so response time does not reveal
 which case occurred. The real reason is recorded only in the audit log.
+
+Rate limits (P-1: "per account and IP prefix"):
+  * per account: LOGIN_MAX_FAILED_ATTEMPTS failures lock the account for
+    LOGIN_LOCKOUT_MINUTES (always on; reported as INVALID_CREDENTIALS);
+  * per network (LOGIN_PREFIX_LIMIT_ENABLED, off by default): LOGIN_PREFIX_FAILURE_LIMIT
+    failed logins from one /24 (IPv6 /48), any account or unknown email, in 15 minutes
+    give 429 TOO_MANY_LOGIN_ATTEMPTS. It does not depend on the account, so it reveals
+    nothing about which emails exist. Counted from LOGIN_FAILED audit rows (which already
+    hold the truncated network) under a per-network advisory lock, so concurrent failures
+    are counted exactly. At the limit even a correct password is refused (the limit must
+    not confirm a right guess) and nothing is recorded: no audit row, no change to the
+    account's failure counter.
 """
 
 import logging
@@ -17,6 +29,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.exceptions import AppError
 from app.core.security import (
     AccessToken,
     InvalidCredentialsError,
@@ -28,10 +41,20 @@ from app.core.security import (
     verify_password,
 )
 from app.models import AlertSeverity, AlertType, AuditActorType, User
+from app.repositories.locks import LOGIN_PREFIX, advisory_xact_lock
+from app.utils.privacy import truncate_ip_address
 from app.repositories import AlertRepository, AuditLogRepository, UserRepository
 from app.schemas.auth import LoginRequest, RegisterRequest
 
 logger = logging.getLogger("sakshampay.auth")
+
+NETWORK_WINDOW = timedelta(minutes=15)  # same window as the account lockout and the Verify limits
+
+
+class TooManyLoginAttemptsError(AppError):
+    status_code = 429
+    code = "TOO_MANY_LOGIN_ATTEMPTS"
+    message = "Too many unsuccessful sign-in attempts. Please wait a few minutes and try again."
 
 
 @dataclass(frozen=True)
@@ -85,17 +108,32 @@ class AuthService:
         ensure_token_signing_configured(self.settings)  # fail with 503 before touching any account
         now = datetime.now(UTC)
         password = request.password.get_secret_value()
-        user = self.users.get_by_email(request.email)
+        network = self._limited_network(client)
+        if network and self._network_failures(network, now) >= self.settings.LOGIN_PREFIX_FAILURE_LIMIT:
+            raise TooManyLoginAttemptsError()  # cheap early answer; the locked check below decides
 
+        # One Argon2id verification on every path, with no network lock held.
+        user = self.users.get_by_email(request.email)
         if user is None:
             verify_dummy_password(password)
-            self._fail(None, "unknown_account", client)
-
-        if user.locked_until is not None and user.locked_until > now:
+            failure = "unknown_account"
+        elif user.locked_until is not None and user.locked_until > now:
             verify_dummy_password(password)  # passwords are not even checked while locked
-            self._fail(user, "account_locked", client)
+            failure = "account_locked"
+        else:
+            failure = None if verify_password(user.password_hash, password) else "wrong_password"
 
-        if not verify_password(user.password_hash, password):
+        if network:
+            # Before anything is written: count and record under one per-network lock.
+            advisory_xact_lock(self.session, LOGIN_PREFIX, network)
+            if self._network_failures(network, now) >= self.settings.LOGIN_PREFIX_FAILURE_LIMIT:
+                logger.info("Login refused by the network limit")
+                raise TooManyLoginAttemptsError()
+
+        if failure in ("unknown_account", "account_locked"):
+            self._fail(user, failure, client)
+
+        if failure == "wrong_password":
             locked_now = self.users.record_failed_login(
                 user,
                 now=now,
@@ -125,6 +163,16 @@ class AuthService:
         self.session.commit()
         logger.info("Login succeeded", extra={"user_id": str(user.id)})
         return user, token
+
+    def _limited_network(self, client: ClientInfo) -> str | None:
+        """The client's network for the per-network limit, or None when the limit is off or
+        the address is unknown (unknown addresses are never pooled together)."""
+        if not self.settings.LOGIN_PREFIX_LIMIT_ENABLED:
+            return None
+        return truncate_ip_address(client.ip_address)
+
+    def _network_failures(self, network: str, now: datetime) -> int:
+        return self.audit.count_for_network(network, "LOGIN_FAILED", since=now - NETWORK_WINDOW)
 
     def _fail(self, user: User | None, reason: str, client: ClientInfo):
         """Audit the failure (with its real reason), commit, and raise the generic error."""

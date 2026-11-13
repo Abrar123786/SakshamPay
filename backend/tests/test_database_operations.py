@@ -63,7 +63,15 @@ def test_invalid_upi_ids_are_rejected(bad):
 
 @pytest.mark.parametrize(
     ("raw", "expected"),
-    [("203.0.113.57", "203.0.113.0/24"), ("2001:db8:abcd:12::1", "2001:db8:abcd::/48"), ("not-an-ip", None), (None, None)],
+    [
+        ("203.0.113.57", "203.0.113.0/24"),
+        ("2001:db8:abcd:12::1", "2001:db8:abcd::/48"),
+        ("::ffff:203.0.113.57", "203.0.113.0/24"),  # IPv4-mapped: the IPv4 network, never '::/48'
+        ("::ffff:198.51.100.9", "198.51.100.0/24"),
+        ("::1", "::/48"),
+        ("not-an-ip", None),
+        (None, None),
+    ],
 )
 def test_ip_addresses_are_truncated(raw, expected):
     assert truncate_ip_address(raw) == expected

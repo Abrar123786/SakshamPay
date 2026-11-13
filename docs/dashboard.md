@@ -61,7 +61,9 @@ table or index was added.
 `by_status.AWAITING_USER_ACTION`, because that is its stored state. It is **not**
 counted in `awaiting_action`, because the user can no longer act on it. The dashboard
 says so: "1 payment awaiting your decision has passed its deadline and will be marked
-as expired." The expiry sweep belongs to the transaction service (P-10/P-11).
+as expired." The expiry sweep belongs to the transaction service: since P-10 it runs
+on payment creation, and reads and actions settle the payment they touch. The dashboard
+itself never sweeps, so it stays read-only.
 
 ### Read-only by construction: two sessions per request
 
@@ -176,7 +178,7 @@ npm test
   dashboards are empty. For a demo, seed a fresh database.
 - **Seeded figures are samples.** Demo users' counts and amounts come from the
   development seed (fictional, simulated payments). Real users have no payments
-  until P-10.
+  until the P-10 payment screens (the payments API exists since P-10 checkpoint 1).
 - **"Unread alerts" can't be opened yet.** The alerts page comes in a later phase.
 - **"Needs your action" doesn't link anywhere yet.** The review screen comes with
   P-10/P-11.

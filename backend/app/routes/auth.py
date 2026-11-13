@@ -38,7 +38,11 @@ def register(body: RegisterRequest, request: Request, session: DbSession) -> Use
     responses={
         401: {"model": ErrorResponse, "description": "INVALID_CREDENTIALS (same response for every failure reason)"},
         422: _VALIDATION,
-        503: _UNAVAILABLE,
+        429: {
+            "model": ErrorResponse,
+            "description": "TOO_MANY_LOGIN_ATTEMPTS: too many failed logins from this network (only when the per-network limit is on)",
+        },
+        503: {"model": ErrorResponse, "description": "Database or authentication not available, or SERVICE_BUSY"},
     },
 )
 def login(body: LoginRequest, request: Request, session: DbSession) -> TokenResponse:

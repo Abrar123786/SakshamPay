@@ -57,6 +57,39 @@ No database change was needed: the P-4 `users` table already has `password_hash`
   reason, visible only in the audit table) and `ACCOUNT_LOCKED`. Passwords, hashes and
   tokens are never logged or audited.
 
+### Login limit per network (P-1: "per account and IP prefix")
+
+The lockout above is the per-account limit. The per-network limit is implemented but
+**off by default** (`LOGIN_PREFIX_LIMIT_ENABLED=false`):
+
+- With it on, `LOGIN_PREFIX_FAILURE_LIMIT` (20) failed logins from one network (IPv4 /24,
+  IPv6 /48; IPv4-mapped IPv6 as its IPv4 /24) in 15 minutes return
+  `429 TOO_MANY_LOGIN_ATTEMPTS` ("Too many unsuccessful sign-in attempts. Please wait a few
+  minutes and try again."). Every `LOGIN_FAILED` counts: wrong passwords, unknown emails,
+  locked and deactivated accounts, from any account.
+- The answer does not depend on the email, so it reveals nothing about which accounts
+  exist.
+- Counted from `LOGIN_FAILED` audit rows, which already hold the truncated network: no new
+  data is stored and no migration was needed.
+- Order of work: an unlocked early check; then the account lookup and one Argon2id check,
+  with no network lock held; then `pg_advisory_xact_lock(51003, hashtext(network))`, a
+  recount, and refusal at the limit **whatever the password was** (otherwise the limit
+  would confirm a right guess). Only after that is anything written. A refused attempt
+  records nothing: no audit row and no change to the account's failure counter, so a
+  blocked attacker cannot also lock the account.
+- Concurrent failures from one network are counted exactly; the limit is never exceeded.
+  Lock order: network lock, then the user row. Verify holds a user row but never waits for
+  this lock, so the two cannot deadlock.
+- A lock wait over 2 seconds returns `503 SERVICE_BUSY` with nothing written.
+- Requests whose address is unknown or invalid are never pooled together.
+
+**Before turning it on in production** the app must see real client addresses. Behind
+Render's proxy that means `FORWARDED_ALLOW_IPS` (see the last item under Known
+limitations). Otherwise every client shares the proxy's network and one attacker could
+block sign-in for everyone. Check it the same way as for Verify
+([`payments.md`](payments.md#verification-step-up)): two failed logins from two different
+networks must give two `LOGIN_FAILED` rows with different `ip_address` values.
+
 ## Endpoints
 
 All errors use the standard format `{"error": {"code", "message", "request_id"}}`.
@@ -87,7 +120,8 @@ is stored lower-case. Unknown fields are refused.
 | 200 | `{"access_token": "...", "token_type": "bearer", "expires_in": 1800, "expires_at": "2026-11-09T10:30:00Z"}` |
 | 401 | `INVALID_CREDENTIALS` (all failure reasons) |
 | 422 | `VALIDATION_ERROR` |
-| 503 | `AUTH_NOT_CONFIGURED` (no usable `JWT_SECRET_KEY`) or a database error |
+| 429 | `TOO_MANY_LOGIN_ATTEMPTS` (only with the per-network limit on) |
+| 503 | `AUTH_NOT_CONFIGURED` (no usable `JWT_SECRET_KEY`), a database error, or `SERVICE_BUSY` |
 
 ### GET /api/v1/auth/me
 
@@ -112,6 +146,8 @@ In `backend\.env` (edit with `notepad .env`; never commit it):
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | 1–1440 |
 | `LOGIN_MAX_FAILED_ATTEMPTS` | `5` | 1–20 |
 | `LOGIN_LOCKOUT_MINUTES` | `15` | 1–1440 |
+| `LOGIN_PREFIX_LIMIT_ENABLED` | `false` | Per-network login limit; turn on only once client addresses are verified |
+| `LOGIN_PREFIX_FAILURE_LIMIT` | `20` | 1–10000 failed logins per network per 15 minutes |
 | `DATABASE_URL` | none | Needed by all three endpoints (see `database-operations.md`) |
 
 ## Getting and using a bearer token
@@ -160,8 +196,13 @@ The tests use a lighter Argon2id cost to stay fast (`fast_password_hashing` fixt
 
 - Registration answers `409 EMAIL_ALREADY_REGISTERED`, which does reveal that an email has an
   account. Login does not.
-- No per-IP rate limiting; the per-account lockout is the brute-force control. Lockout can be
+- **Per-network limits are off by default.** P-1 requires login and Verify attempts to be
+  limited "per account and IP prefix". Both per-network limits are implemented, but until
+  `LOGIN_PREFIX_LIMIT_ENABLED` and `VERIFY_PREFIX_LIMIT_ENABLED` are turned on (after the
+  proxy check), only the per-account limits are active. The account lockout can be
   triggered by someone who knows a user's email (a 15-minute denial of sign-in).
+- With the per-network limit on, someone on a shared network (campus, mobile carrier NAT)
+  can block sign-in for others on it for 15 minutes.
 - A token stays valid until it expires (no revocation list); deactivating a user blocks their
   existing tokens because every request re-checks the user.
 - Behind a proxy (Render), audit IP addresses are the proxy's unless Uvicorn is started with

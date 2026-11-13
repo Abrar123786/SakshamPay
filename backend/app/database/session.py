@@ -66,7 +66,11 @@ class Database:
                 echo=False,
                 connect_args={
                     "connect_timeout": s.DB_CONNECT_TIMEOUT_SECONDS,
-                    "options": f"-c statement_timeout={s.DB_STATEMENT_TIMEOUT_MS}",
+                    # timezone=UTC: psycopg returns TIMESTAMP WITH TIME ZONE values in the
+                    # session time zone, which otherwise defaults to the server's setting
+                    # (often the host's local zone). UTC makes every timestamp the application
+                    # reads carry the same zone as the ones it creates; instants are unchanged.
+                    "options": f"-c statement_timeout={s.DB_STATEMENT_TIMEOUT_MS} -c timezone=UTC",
                     "application_name": s.APP_NAME,
                 },
             )

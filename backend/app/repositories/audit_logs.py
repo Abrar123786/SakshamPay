@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import cast, func, select
+from sqlalchemy.dialects.postgresql import INET
 
 from app.core.logging import request_id_var
 from app.models import AuditActorType, AuditLog
@@ -77,6 +78,29 @@ class AuditLogRepository(Repository):
             query = query.where(AuditLog.created_at < until)
         query = query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
         return list(self.session.scalars(query.limit(clamp_limit(limit)).offset(clamp_offset(offset))))
+
+    def count_for_user(self, user_id: uuid.UUID, action: str, *, since: datetime) -> int:
+        """How many times ``action`` was recorded for this user since ``since``."""
+        return self.session.scalar(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.user_id == user_id, AuditLog.action == action, AuditLog.created_at >= since)
+        )
+
+    def count_for_network(self, network: str, action: str, *, since: datetime) -> int:
+        """How many times ``action`` was recorded from one truncated network (any account) since ``since``.
+
+        ``network`` must be a value produced by ``truncate_ip_address`` (the form stored
+        in ``ip_address``). Rows without an address are never counted together: a
+        missing network is a programming error, not "the NULL network".
+        """
+        if not network:
+            raise ValueError("count_for_network needs a network; skip the check when the address is unknown")
+        return self.session.scalar(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.action == action, AuditLog.created_at >= since, AuditLog.ip_address == cast(network, INET))
+        )
 
     def history_for_transaction(self, transaction_id: uuid.UUID) -> list[AuditLog]:
         """Every event for one transaction, oldest first (its full story)."""
