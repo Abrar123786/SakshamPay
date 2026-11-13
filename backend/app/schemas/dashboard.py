@@ -8,15 +8,15 @@ development-seed samples, not risk-engine output. They are added once the
 scoring pipeline exists.
 """
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.common import UtcDateTime
 
 
 class DashboardPeriod(BaseModel):
     days: int = Field(description="Length of the rolling window in days (always 30).")
-    start: datetime = Field(description="Window start (inclusive), UTC: end minus 30 days.")
-    end: datetime = Field(description="Window end (inclusive), UTC: the time of the request.")
+    start: UtcDateTime = Field(description="Window start (inclusive), UTC: end minus 30 days.")
+    end: UtcDateTime = Field(description="Window end (inclusive), UTC: the time of the request.")
 
 
 class TransactionStatusCounts(BaseModel):

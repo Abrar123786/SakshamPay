@@ -238,6 +238,18 @@ Register, sign in and call protected endpoints with a bearer token: see
 | --- | --- |
 | `GET /api/v1/dashboard/summary` | The signed-in user's last 30 days: counts by status, approved amount, payments awaiting action, unread alerts (read-only; see [`docs/dashboard.md`](docs/dashboard.md)) |
 
+| Payments endpoint (P-10, simulated) | Purpose |
+| --- | --- |
+| `GET`, `POST /api/v1/beneficiaries` | List or add simulated payees (identifiers stored masked plus a keyed fingerprint only) |
+| `POST /api/v1/transactions` | Start a simulated payment and assess its risk (headers `Idempotency-Key`, `X-Device-Id`) |
+| `GET /api/v1/transactions/{id}` | One payment and its assessment |
+| `POST /api/v1/transactions/{id}/actions` | `CANCEL`, `CONTINUE` or `VERIFY` (password re-entry) |
+
+Risk assessment currently runs in P-1's rules-only mode (no anomaly model yet). Details,
+the R1–R6 mapping and open definitions: [`docs/payments.md`](docs/payments.md).
+Login and Verify are rate-limited per account (always on) and per network/IP prefix
+(implemented, off by default until real client addresses are verified behind the proxy).
+
 Frontend pages: `/register`, `/login` and the protected `/dashboard` and `/account`. The token is kept in
 `sessionStorage` (never `localStorage`); sign-out is client-side because the backend has
 no logout endpoint. Details and trade-offs:
@@ -250,7 +262,11 @@ no logout endpoint. Details and trade-offs:
 `uvicorn app.main:app --host 0.0.0.0 --port $PORT`; health check path `/health`.
 Set `APP_ENV=production`, `DEBUG=false`, `JWT_SECRET_KEY`, `DATABASE_URL`,
 `FRONTEND_ORIGIN=https://<your-vercel-domain>` and the Python version (`.python-version`
-pins 3.13).
+pins 3.13). Set `IDENTIFIER_HASH_KEY` for payments. Leave
+`VERIFY_PREFIX_LIMIT_ENABLED` and `LOGIN_PREFIX_LIMIT_ENABLED` at `false` until
+`FORWARDED_ALLOW_IPS` passes real client
+addresses through Render's proxy and that has been checked
+([`docs/payments.md`](docs/payments.md#verification-step-up)).
 
 **Vercel (frontend):** root directory `frontend`; framework preset Vite; set
 `VITE_API_BASE_URL=https://<your-render-service>/api/v1`.
@@ -262,11 +278,11 @@ P-8 until the domains are known). The exact policy is in
 
 ## Status
 
-P-9 (dashboard) complete: signed-in navigation and a dashboard of the last 30 days
-backed by the read-only `GET /api/v1/dashboard/summary`. Earlier: P-8 authentication
-frontend, P-7 UI foundation, P-6 backend authentication, P-5 database operations.
-Payments (P-10), transaction history (P-11) and risk scoring are implemented in later
-stages.
+P-10 checkpoint 1 (payments backend) under review: simulated payees, payment creation
+with a rules-only risk assessment, and the user's Cancel / Continue / Verify decision.
+The payment screens (P-10 checkpoint 2), transaction history (P-11) and the anomaly model
+come later. Earlier: P-9 dashboard, P-8 authentication frontend, P-7 UI foundation, P-6
+backend authentication, P-5 database operations.
 
 ## License
 

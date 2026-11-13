@@ -322,6 +322,12 @@ device/session 15, behavioural deviation 15) total **105**. P-1 caps the rule sc
 inside `rule_details`. The weights themselves are unchanged pending a decision; options are
 listed in the P-4 report.
 
+P-10 implements exactly this: `rule_score = min(100, raw)` and the raw total is the
+`raw_points_total` of the summary entry at the end of `rule_details`. The schema has no
+constraint tying `risk_level` to the score band, which is what lets a rules-only
+assessment be stored as score 0 with level MEDIUM (P-1's LOW-to-MEDIUM uplift) without
+inventing points; see [`payments.md`](payments.md#score-and-level-when-the-level-is-raised).
+
 ## Tests
 
 - `backend/tests/test_models.py`: metadata checks, no database needed.

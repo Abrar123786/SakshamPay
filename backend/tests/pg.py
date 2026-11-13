@@ -39,12 +39,15 @@ def run_alembic(engine: Engine, action: str, revision: str) -> None:
 
 
 @contextmanager
-def throwaway_schema(url: str, *, migrate: bool = True) -> Iterator[Engine]:
+def throwaway_schema(url: str, *, migrate: bool = True, timezone: str | None = None) -> Iterator[Engine]:
+    """A fresh schema, dropped afterwards. ``timezone`` forces the session time zone of the
+    yielded engine (otherwise the server's setting applies, as for a real deployment)."""
     schema = f"p5_test_{uuid.uuid4().hex[:12]}"
     admin = create_engine(url)
     with admin.begin() as connection:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    engine = create_engine(url, connect_args={"options": f"-c search_path={schema}"})
+    options = f"-c search_path={schema}" + (f" -c timezone={timezone}" if timezone else "")
+    engine = create_engine(url, connect_args={"options": options})
     try:
         if migrate:
             run_alembic(engine, "upgrade", "head")

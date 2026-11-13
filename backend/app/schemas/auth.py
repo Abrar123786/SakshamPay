@@ -9,10 +9,11 @@
 
 import re
 import uuid
-from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+
+from app.schemas.common import UtcDateTime
 
 # Same shapes the database CHECK constraints enforce (users table).
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -134,7 +135,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int  # seconds
-    expires_at: datetime
+    expires_at: UtcDateTime
 
 
 class UserProfile(BaseModel):
@@ -147,4 +148,4 @@ class UserProfile(BaseModel):
     email: str
     phone_number: str | None
     is_active: bool
-    created_at: datetime
+    created_at: UtcDateTime

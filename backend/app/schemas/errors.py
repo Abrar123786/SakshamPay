@@ -10,6 +10,7 @@ class ErrorDetail(BaseModel):
     code: str
     message: str
     request_id: str | None = None
+    context: dict | None = None  # only on some errors, e.g. {"attempts_remaining": 2}
 
 
 class ErrorResponse(BaseModel):

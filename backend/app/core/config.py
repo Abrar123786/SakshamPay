@@ -80,6 +80,26 @@ class Settings(BaseSettings):
     # P-1 lockout rule: this many consecutive failed logins lock the account for LOGIN_LOCKOUT_MINUTES.
     LOGIN_MAX_FAILED_ATTEMPTS: int = Field(default=5, ge=1, le=20)
     LOGIN_LOCKOUT_MINUTES: int = Field(default=15, ge=1, le=1440)
+    # P-1: login attempts are also rate-limited per IP prefix (/24, IPv6 /48): failed
+    # logins from every account (and unknown emails) on one network in 15 minutes. OFF by
+    # default for the same reason as VERIFY_PREFIX_LIMIT_ENABLED (below): behind Render's
+    # proxy every client shares the proxy's prefix until FORWARDED_ALLOW_IPS is set and
+    # verified, and the limit would then block sign-in for everyone (docs/authentication.md).
+    LOGIN_PREFIX_LIMIT_ENABLED: bool = False
+    LOGIN_PREFIX_FAILURE_LIMIT: int = Field(default=20, ge=1, le=10_000)
+
+    # --- Simulated payments (P-10) ---------------------------------------------------
+    # Largest simulated payment, in paise (P-1 default: Rs 1,00,000). The smallest is Rs 1.
+    MAX_TRANSACTION_AMOUNT_PAISE: int = Field(default=10_000_000, ge=100, le=1_000_000_000)
+    # P-1: Verify attempts are rate-limited per account (always on: 5 failures in 15
+    # minutes) and per IP prefix (/24, IPv6 /48). The prefix limit counts failed
+    # verifications from every account on one network in the same 15 minutes. It is
+    # OFF by default: it is only meaningful once the server sees real client addresses
+    # (behind Render's proxy that needs FORWARDED_ALLOW_IPS; see docs/payments.md).
+    # Turned on without that, every client shares the proxy's prefix and one attacker
+    # could block verification for everyone.
+    VERIFY_PREFIX_LIMIT_ENABLED: bool = False
+    VERIFY_PREFIX_FAILURE_LIMIT: int = Field(default=20, ge=1, le=10_000)
 
     # --- HTTP --------------------------------------------------------------------
     FRONTEND_ORIGIN: str = "http://localhost:5173"  # comma-separated CORS allowlist

@@ -11,6 +11,12 @@ from tests.conftest import make_settings
 SYSTEM_PATHS = {"/", "/health", "/health/ready"}
 AUTH_PATHS = {"/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/me"}  # added in P-6
 DASHBOARD_PATHS = {"/api/v1/dashboard/summary"}  # added in P-9
+PAYMENT_PATHS = {  # added in P-10
+    "/api/v1/beneficiaries",
+    "/api/v1/transactions",
+    "/api/v1/transactions/{transaction_id}",
+    "/api/v1/transactions/{transaction_id}/actions",
+}
 
 
 @pytest.fixture
@@ -41,11 +47,12 @@ def test_prefix_comes_from_settings(probe_router):
 def test_openapi_lists_only_real_routes(client):
     paths = set(client.get("/openapi.json").json()["paths"])
     # Exactly the system paths plus the P-6 auth and P-9 dashboard endpoints; every other path would be versioned.
-    assert paths == SYSTEM_PATHS | AUTH_PATHS | DASHBOARD_PATHS
+    assert paths == SYSTEM_PATHS | AUTH_PATHS | DASHBOARD_PATHS | PAYMENT_PATHS
     assert all(p in SYSTEM_PATHS or p.startswith("/api/v1/") for p in paths)
 
 
 def test_unknown_versioned_route_returns_standard_404(client):
-    response = client.get("/api/v1/transactions")
+    # P-10 added /api/v1/transactions, the path this P-3 test used as its unknown example.
+    response = client.get("/api/v1/no-such-resource")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "NOT_FOUND"

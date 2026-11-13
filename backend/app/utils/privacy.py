@@ -86,12 +86,19 @@ def hash_device_id(device_id: str, key: bytes | SecretStr) -> str:
 
 
 def truncate_ip_address(raw: str | None) -> str | None:
-    """'203.0.113.57' -> '203.0.113.0/24'; IPv6 -> /48. Invalid input -> None."""
+    """'203.0.113.57' -> '203.0.113.0/24'; IPv6 -> /48. Invalid input -> None.
+
+    An IPv4-mapped IPv6 address ('::ffff:203.0.113.57', as a dual-stack server may
+    report an IPv4 client) is treated as the IPv4 address it carries. Truncating it as
+    IPv6 would put every such client in the same network, '::/48'.
+    """
     if not raw:
         return None
     try:
         address = ipaddress.ip_address(raw.strip())
     except ValueError:
         return None
+    if address.version == 6 and address.ipv4_mapped is not None:
+        address = address.ipv4_mapped
     prefix = 24 if address.version == 4 else 48
     return str(ipaddress.ip_network(f"{address}/{prefix}", strict=False))

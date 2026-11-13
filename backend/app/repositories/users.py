@@ -41,6 +41,12 @@ class UserRepository(Repository):
     def get(self, user_id: uuid.UUID) -> User | None:
         return self.session.get(User, user_id)
 
+    def get_for_update(self, user_id: uuid.UUID) -> User | None:
+        """Row-locked read: serialises operations that must not interleave for one user."""
+        return self.session.scalar(
+            select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True)
+        )
+
     def get_by_email(self, email: str) -> User | None:
         return self.session.scalar(select(User).where(User.email == normalise_email(email)))
 

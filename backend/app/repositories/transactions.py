@@ -81,7 +81,9 @@ class TransactionRepository(Repository):
         """Insert a new INITIATED transaction, or return the one already created with this key.
 
         The same key with a different ``request_hash`` raises IdempotencyKeyReusedError.
-        ``initiated_at`` is for imports and seed data; normally the database clock is used.
+        ``initiated_at`` defaults to the database's transaction start time (``now()``).
+        ``TransactionService`` passes ``clock_timestamp()`` read under its per-user
+        creation lock; seed data and tests pass historical times.
         """
         existing = self.get_by_idempotency_key(user_id, idempotency_key)
         if existing is not None:
@@ -201,6 +203,114 @@ class TransactionRepository(Repository):
             .limit(clamp_limit(limit))
         )
         return list(self.session.scalars(query))
+
+    def lock_expired_awaiting(self, now: datetime, *, limit: int | None = None) -> list[Transaction]:
+        """Sweep use: like ``list_expired_awaiting`` but row-locked, skipping rows another
+        request holds (that request will settle them itself)."""
+        query = (
+            select(Transaction)
+            .where(Transaction.status == S.AWAITING_USER_ACTION, Transaction.expires_at < now)
+            .order_by(Transaction.expires_at)
+            .limit(clamp_limit(limit))
+            .with_for_update(skip_locked=True)
+        )
+        return list(self.session.scalars(query))
+
+    def lock_stale_initiated(self, older_than: datetime, *, limit: int | None = None) -> list[Transaction]:
+        """Sweep use: like ``list_stale_initiated`` but row-locked, skipping rows still being assessed."""
+        query = (
+            select(Transaction)
+            .where(Transaction.status == S.INITIATED, Transaction.initiated_at < older_than)
+            .order_by(Transaction.initiated_at)
+            .limit(clamp_limit(limit))
+            .with_for_update(skip_locked=True)
+        )
+        return list(self.session.scalars(query))
+
+    # ---- history for feature extraction (read-only) -------------------------------------
+    # Always the same user's OTHER transactions initiated no later than ``transaction``.
+
+    @staticmethod
+    def _earlier(transaction: Transaction):
+        return (
+            Transaction.user_id == transaction.user_id,
+            Transaction.id != transaction.id,
+            Transaction.initiated_at <= transaction.initiated_at,
+        )
+
+    def approved_history(self, transaction: Transaction, *, since: datetime, limit: int = 2000) -> list[tuple[int, datetime]]:
+        """(amount_paise, initiated_at) of earlier APPROVED payments since ``since``, newest first."""
+        rows = self.session.execute(
+            select(Transaction.amount_paise, Transaction.initiated_at)
+            .where(*self._earlier(transaction), Transaction.status == S.APPROVED, Transaction.initiated_at >= since)
+            .order_by(Transaction.initiated_at.desc())
+            .limit(limit)
+        )
+        return [(amount, at) for amount, at in rows]
+
+    def approved_amount_stats(self, transaction: Transaction, *, percentile: float) -> tuple[int, float | None]:
+        """(count, percentile amount) over ALL earlier APPROVED payments, any date.
+
+        ``percentile_cont`` interpolates linearly, like the engine's ``percentile``.
+        One aggregate row: no row cap. Used only by R6's dormant clause.
+        """
+        count, value = self.session.execute(
+            select(
+                func.count(),
+                func.percentile_cont(percentile / 100).within_group(Transaction.amount_paise),
+            ).where(*self._earlier(transaction), Transaction.status == S.APPROVED)
+        ).one()
+        return int(count), (float(value) if value is not None else None)
+
+    def last_approved_at(self, transaction: Transaction) -> datetime | None:
+        return self.session.scalar(
+            select(func.max(Transaction.initiated_at)).where(*self._earlier(transaction), Transaction.status == S.APPROVED)
+        )
+
+    def has_approved_payment_to_beneficiary(self, transaction: Transaction) -> bool:
+        return self._exists(Transaction.status == S.APPROVED, Transaction.beneficiary_id == transaction.beneficiary_id, transaction=transaction)
+
+    def count_attempts(self, transaction: Transaction, *, since: datetime) -> int:
+        """Earlier payment attempts in any status since ``since``."""
+        return self.session.scalar(
+            select(func.count()).select_from(Transaction).where(*self._earlier(transaction), Transaction.initiated_at >= since)
+        )
+
+    def sum_approved_amount(self, transaction: Transaction, *, since: datetime) -> int:
+        total = self.session.scalar(
+            select(func.coalesce(func.sum(Transaction.amount_paise), 0)).where(
+                *self._earlier(transaction), Transaction.status == S.APPROVED, Transaction.initiated_at >= since
+            )
+        )
+        return int(total)
+
+    def has_repeat_attempt(self, transaction: Transaction, *, since: datetime) -> bool:
+        """An earlier attempt (any status) to the same beneficiary for the same amount."""
+        return self._exists(
+            Transaction.beneficiary_id == transaction.beneficiary_id,
+            Transaction.amount_paise == transaction.amount_paise,
+            Transaction.initiated_at >= since,
+            transaction=transaction,
+        )
+
+    def device_seen(self, transaction: Transaction, *, since: datetime) -> bool:
+        """The same device hash on an earlier APPROVED payment of this user initiated since ``since``.
+
+        Only approvals count: an approval needs a completed assessment and an explicit
+        user action. INITIATED, FAILED, AWAITING, EXPIRED and CANCELLED attempts
+        (including cancellation after failed verification) never make a device known.
+        """
+        if transaction.device_id_hash is None:
+            return False
+        return self._exists(
+            Transaction.status == S.APPROVED,
+            Transaction.device_id_hash == transaction.device_id_hash,
+            Transaction.initiated_at >= since,
+            transaction=transaction,
+        )
+
+    def _exists(self, *conditions, transaction: Transaction) -> bool:
+        return self.session.scalar(select(Transaction.id).where(*self._earlier(transaction), *conditions).limit(1)) is not None
 
     # ---- aggregates (read-only, one user, a created_at window) ------------------------
     # The window is start <= created_at <= end; it uses ix_transactions_user_id_created_at.
